@@ -18,7 +18,7 @@ stages:
         displayName: Nodejs 构建
         nodeVersion: 22.22.0
         commands:
-          - npm install && npm run compile && npx @vscode/vsce package --allow-missing-repository --skip-license --no-rewrite-relative-links
+          - apt-get install -y python3 make g++ && npm install && npm run compile && npx @vscode/vsce package --allow-missing-repository --skip-license --no-rewrite-relative-links
         artifacts:
           - name: BUILD_ARTIFACT
             path:
