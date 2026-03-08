@@ -1,0 +1,95 @@
+{
+  "name": "right-sidebar-terminal",
+  "displayName": "Right Sidebar Terminal",
+  "description": "Native terminal manager in the secondary sidebar",
+  "version": "0.0.13",
+  "engines": {
+    "vscode": "^1.107.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "viewsContainers": {
+      "secondarySidebar": [
+        {
+          "id": "rst-terminal-secondary-container",
+          "title": "Terminal",
+          "icon": "media/icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "rst-terminal-secondary-container": [
+        {
+          "id": "rstTerminalSecondaryView",
+          "name": "Terminal",
+          "type": "webview"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "terminalSidebar.open",
+        "title": "Open Terminal Sidebar"
+      },
+      {
+        "command": "terminalSidebar.newEditorTerminal",
+        "title": "Terminal Sidebar: New Editor Terminal"
+      },
+      {
+        "command": "terminalSidebar.newPanelTerminal",
+        "title": "Terminal Sidebar: New Panel Terminal"
+      },
+      {
+        "command": "terminalSidebar.splitActiveTerminal",
+        "title": "Terminal Sidebar: Split Active Terminal"
+      },
+      {
+        "command": "terminalSidebar.focusActiveTerminal",
+        "title": "Terminal Sidebar: Focus Active Terminal"
+      },
+      {
+        "command": "terminalSidebar.closeActiveTerminal",
+        "title": "Terminal Sidebar: Close Active Terminal"
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "terminalSidebar.newEditorTerminal",
+          "when": "view == rstTerminalSecondaryView",
+          "group": "navigation@1"
+        },
+        {
+          "command": "terminalSidebar.newPanelTerminal",
+          "when": "view == rstTerminalSecondaryView",
+          "group": "navigation@2"
+        },
+        {
+          "command": "terminalSidebar.splitActiveTerminal",
+          "when": "view == rstTerminalSecondaryView",
+          "group": "navigation@3"
+        },
+        {
+          "command": "terminalSidebar.focusActiveTerminal",
+          "when": "view == rstTerminalSecondaryView",
+          "group": "navigation@4"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "package:patch": "node ./scripts/package-patch.js"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0",
+    "@types/vscode": "^1.80.0"
+  }
+}
