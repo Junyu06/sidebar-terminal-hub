@@ -18,11 +18,11 @@ stages:
         displayName: Nodejs 构建
         nodeVersion: 22.22.0
         commands:
-          - npm install && npm run compile && npx vsce package --allow-missing-repository --skip-license --no-rewrite-relative-links
+          - npm install && npm run compile && npx @vscode/vsce package --allow-missing-repository --skip-license --no-rewrite-relative-links
         artifacts:
           - name: BUILD_ARTIFACT
             path:
-              - ./dist
+              - ./*.vsix
         strategy: {}
       - step: publish@general_artifacts
         name: publish_general_artifacts
