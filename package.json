@@ -1,8 +1,12 @@
 {
   "name": "right-sidebar-terminal",
   "displayName": "Right Sidebar Terminal",
-  "description": "Native terminal manager in the secondary sidebar",
-  "version": "0.0.13",
+  "description": "Embedded command-line terminal in the secondary sidebar",
+  "version": "0.0.18",
+  "repository": {
+    "type": "git",
+    "url": "https://gitee.com/wagio_admin/vscode-right-sidebar-terminal"
+  },
   "engines": {
     "vscode": "^1.107.0"
   },
@@ -36,49 +40,14 @@
       {
         "command": "terminalSidebar.open",
         "title": "Open Terminal Sidebar"
-      },
-      {
-        "command": "terminalSidebar.newEditorTerminal",
-        "title": "Terminal Sidebar: New Editor Terminal"
-      },
-      {
-        "command": "terminalSidebar.newPanelTerminal",
-        "title": "Terminal Sidebar: New Panel Terminal"
-      },
-      {
-        "command": "terminalSidebar.splitActiveTerminal",
-        "title": "Terminal Sidebar: Split Active Terminal"
-      },
-      {
-        "command": "terminalSidebar.focusActiveTerminal",
-        "title": "Terminal Sidebar: Focus Active Terminal"
-      },
-      {
-        "command": "terminalSidebar.closeActiveTerminal",
-        "title": "Terminal Sidebar: Close Active Terminal"
       }
     ],
     "menus": {
       "view/title": [
         {
-          "command": "terminalSidebar.newEditorTerminal",
+          "command": "terminalSidebar.newSession",
           "when": "view == rstTerminalSecondaryView",
           "group": "navigation@1"
-        },
-        {
-          "command": "terminalSidebar.newPanelTerminal",
-          "when": "view == rstTerminalSecondaryView",
-          "group": "navigation@2"
-        },
-        {
-          "command": "terminalSidebar.splitActiveTerminal",
-          "when": "view == rstTerminalSecondaryView",
-          "group": "navigation@3"
-        },
-        {
-          "command": "terminalSidebar.focusActiveTerminal",
-          "when": "view == rstTerminalSecondaryView",
-          "group": "navigation@4"
         }
       ]
     }
@@ -89,7 +58,12 @@
     "package:patch": "node ./scripts/package-patch.js"
   },
   "devDependencies": {
-    "typescript": "^5.0.0",
-    "@types/vscode": "^1.80.0"
+    "@types/vscode": "^1.80.0",
+    "typescript": "^5.0.0"
+  },
+  "dependencies": {
+    "node-pty": "^1.1.0",
+    "xterm": "^5.3.0",
+    "xterm-addon-fit": "^0.8.0"
   }
 }

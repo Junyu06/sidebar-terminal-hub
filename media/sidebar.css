@@ -1,0 +1,417 @@
+:root {
+    color-scheme: light dark;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+html,
+body {
+    width: 100%;
+    height: 100%;
+}
+
+body {
+    margin: 0;
+    background: var(--vscode-sideBar-background);
+    color: var(--vscode-sideBar-foreground);
+    font-family: var(--vscode-font-family);
+    font-size: 13px;
+    overflow: hidden;
+}
+
+button,
+input {
+    font: inherit;
+}
+
+button {
+    color: inherit;
+}
+
+.hidden {
+    display: none !important;
+}
+
+.layout {
+    height: 100vh;
+    display: grid;
+    grid-template-rows: auto auto 1fr;
+    min-height: 0;
+}
+
+.titlebar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 10px 12px 8px;
+    border-bottom: 1px solid var(--vscode-sideBarSectionHeader-border, rgba(127, 127, 127, 0.16));
+}
+
+.title-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+}
+
+.title {
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+}
+
+.pill {
+    display: inline-flex;
+    align-items: center;
+    border-radius: 999px;
+    padding: 2px 8px;
+    background: var(--vscode-badge-background);
+    color: var(--vscode-badge-foreground);
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.icon-button {
+    width: 30px;
+    height: 30px;
+    border-radius: 8px;
+    border: 1px solid transparent;
+    background: transparent;
+    color: var(--vscode-icon-foreground, var(--vscode-foreground));
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.18s ease, border-color 0.18s ease, opacity 0.18s ease;
+}
+
+.icon-button:hover {
+    background: var(--vscode-toolbar-hoverBackground, rgba(127, 127, 127, 0.12));
+}
+
+.icon-button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.icon-button svg,
+.tab-close svg {
+    width: 16px;
+    height: 16px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.75;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.icon-button:focus-visible,
+.tab-trigger:focus-visible,
+.tab-close:focus-visible,
+.number-input:focus-visible,
+.secondary-button:focus-visible,
+.primary-button:focus-visible,
+.checkbox-input:focus-visible {
+    outline: 1px solid var(--vscode-focusBorder);
+    outline-offset: 1px;
+}
+
+.tabs {
+    display: flex;
+    flex-wrap: wrap;
+    align-content: flex-start;
+    gap: 8px;
+    overflow-x: hidden;
+    overflow-y: auto;
+    padding: 8px 12px 10px;
+    border-bottom: 1px solid var(--vscode-sideBarSectionHeader-border, rgba(127, 127, 127, 0.16));
+}
+
+.tab {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    width: 120px;
+    min-width: 80px;
+    max-width: 120px;
+    flex: 0 1 120px;
+    border-radius: 10px;
+    border: 1px solid transparent;
+    background: color-mix(in srgb, var(--vscode-editorWidget-background) 66%, transparent);
+    transition: background-color 0.18s ease, border-color 0.18s ease;
+}
+
+.tab:hover {
+    background: color-mix(in srgb, var(--vscode-editorWidget-background) 80%, transparent);
+}
+
+.tab.active {
+    border-color: var(--vscode-focusBorder);
+    background: color-mix(in srgb, var(--vscode-button-background) 22%, transparent);
+}
+
+.tab.exited {
+    border-color: color-mix(in srgb, var(--vscode-terminal-ansiRed, #f14c4c) 28%, transparent);
+}
+
+.tab-trigger {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 2px 8px 10px;
+    border: 0;
+    border-radius: 10px;
+    background: transparent;
+    color: inherit;
+    cursor: pointer;
+    text-align: left;
+}
+
+.tab-title {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-weight: 600;
+}
+
+.tab-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 999px;
+    background: var(--vscode-terminal-ansiGreen, #4caf50);
+    flex: none;
+}
+
+.tab-dot.exited {
+    background: var(--vscode-terminal-ansiRed, #f14c4c);
+}
+
+.tab-close {
+    width: 24px;
+    height: 24px;
+    flex: none;
+    margin-right: 4px;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--vscode-descriptionForeground);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0.76;
+}
+
+.tab:hover .tab-close,
+.tab.active .tab-close {
+    opacity: 1;
+}
+
+.tab-close:hover {
+    background: var(--vscode-toolbar-hoverBackground, rgba(127, 127, 127, 0.12));
+    color: var(--vscode-foreground);
+}
+
+.quick-command-button {
+    padding: 0;
+}
+
+.quick-command-icon {
+    width: 16px;
+    height: 16px;
+    object-fit: contain;
+    display: block;
+}
+
+.stage {
+    position: relative;
+    min-height: 0;
+}
+
+.viewport,
+.empty-state {
+    position: absolute;
+    inset: 0;
+}
+
+.viewport {
+    background: var(--vscode-terminal-background, var(--vscode-editor-background));
+}
+
+.terminal-host {
+    position: absolute;
+    inset: 0;
+    padding: 8px 6px 8px 8px;
+}
+
+.terminal-host.hidden {
+    display: none;
+}
+
+.empty-state {
+    display: grid;
+    place-items: center;
+    padding: 20px;
+}
+
+.empty-card {
+    max-width: 300px;
+    display: grid;
+    gap: 12px;
+    padding: 16px;
+    border: 1px solid var(--vscode-widget-border, rgba(127, 127, 127, 0.16));
+    border-radius: 12px;
+    background: color-mix(in srgb, var(--vscode-editorWidget-background) 82%, transparent);
+}
+
+.empty-title,
+.modal-title,
+.settings-group-title {
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.empty-copy,
+.modal-subtitle,
+.field-label {
+    color: var(--vscode-descriptionForeground);
+    line-height: 1.5;
+}
+
+.primary-button,
+.secondary-button {
+    min-height: 32px;
+    border-radius: 8px;
+    border: 1px solid transparent;
+    padding: 0 12px;
+    cursor: pointer;
+}
+
+.primary-button {
+    background: var(--vscode-button-background);
+    color: var(--vscode-button-foreground);
+}
+
+.primary-button:hover {
+    background: var(--vscode-button-hoverBackground);
+}
+
+.secondary-button {
+    background: color-mix(in srgb, var(--vscode-editorWidget-background) 84%, transparent);
+    border-color: var(--vscode-widget-border, rgba(127, 127, 127, 0.24));
+}
+
+.secondary-button:hover {
+    background: color-mix(in srgb, var(--vscode-editorWidget-background) 94%, transparent);
+}
+
+.modal {
+    position: fixed;
+    inset: 0;
+    z-index: 20;
+    display: grid;
+    place-items: center;
+    padding: 16px;
+    background: color-mix(in srgb, var(--vscode-editor-background) 40%, transparent);
+    backdrop-filter: blur(4px);
+}
+
+.modal-card {
+    width: min(100%, 340px);
+    display: grid;
+    gap: 14px;
+    padding: 16px;
+    border-radius: 14px;
+    border: 1px solid var(--vscode-widget-border, rgba(127, 127, 127, 0.24));
+    background: var(--vscode-editorWidget-background, var(--vscode-sideBar-background));
+    box-shadow: 0 14px 32px rgba(0, 0, 0, 0.24);
+}
+
+.modal-header,
+.modal-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.modal-body {
+    display: grid;
+    gap: 14px;
+}
+
+.field {
+    display: grid;
+    gap: 8px;
+}
+
+.number-input {
+    width: 100%;
+    min-height: 34px;
+    border-radius: 8px;
+    border: 1px solid var(--vscode-input-border, transparent);
+    background: var(--vscode-input-background);
+    color: var(--vscode-input-foreground);
+    padding: 0 10px;
+}
+
+.settings-group {
+    display: grid;
+    gap: 8px;
+}
+
+.toggle-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    min-height: 34px;
+    padding: 0 2px;
+}
+
+.toggle-copy {
+    min-width: 0;
+}
+
+.checkbox-input {
+    width: 16px;
+    height: 16px;
+    accent-color: var(--vscode-button-background);
+}
+
+.xterm {
+    height: 100%;
+}
+
+.xterm .xterm-viewport {
+    background-color: transparent !important;
+}
+
+.xterm .xterm-screen,
+.xterm .xterm-helpers {
+    width: 100% !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .icon-button,
+    .tab,
+    .tab-close {
+        transition: none;
+    }
+}

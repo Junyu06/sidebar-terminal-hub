@@ -28,9 +28,9 @@ const vsixName = `${packageJson.name}-${packageJson.version}.vsix`;
 
 run('vsce.cmd', [
   'package',
-  '--no-dependencies',
   '--allow-missing-repository',
   '--skip-license',
+  '--no-rewrite-relative-links',
   '--out',
   vsixName,
 ]);

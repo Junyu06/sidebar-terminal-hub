@@ -1,11 +1,8 @@
 ﻿import * as vscode from 'vscode'
 import {
-    CLOSE_ACTIVE_TERMINAL_COMMAND,
-    FOCUS_ACTIVE_TERMINAL_COMMAND,
-    NEW_EDITOR_TERMINAL_COMMAND,
-    NEW_PANEL_TERMINAL_COMMAND,
+    CLOSE_ACTIVE_SESSION_COMMAND,
+    NEW_SESSION_COMMAND,
     OPEN_COMMAND,
-    SPLIT_ACTIVE_TERMINAL_COMMAND,
     TerminalSidebarProvider,
     VIEW_ID
 } from './terminalSidebarProvider'
@@ -13,6 +10,7 @@ import {
 export function activate(context: vscode.ExtensionContext) {
     const provider = new TerminalSidebarProvider(context)
 
+    context.subscriptions.push(provider)
     context.subscriptions.push(
         vscode.window.registerWebviewViewProvider(
             VIEW_ID,
@@ -35,43 +33,18 @@ export function activate(context: vscode.ExtensionContext) {
     button.show()
 
     context.subscriptions.push(button)
+
     context.subscriptions.push(
         vscode.commands.registerCommand(OPEN_COMMAND, async () => {
             await provider.reveal()
         }),
-        vscode.commands.registerCommand(NEW_EDITOR_TERMINAL_COMMAND, async () => {
-            await provider.createEditorTerminal()
+        vscode.commands.registerCommand(NEW_SESSION_COMMAND, async () => {
+            await provider.createSession()
         }),
-        vscode.commands.registerCommand(NEW_PANEL_TERMINAL_COMMAND, async () => {
-            await provider.createPanelTerminal()
-        }),
-        vscode.commands.registerCommand(SPLIT_ACTIVE_TERMINAL_COMMAND, async () => {
-            await provider.splitActiveTerminal()
-        }),
-        vscode.commands.registerCommand(FOCUS_ACTIVE_TERMINAL_COMMAND, () => {
-            provider.focusActiveTerminal()
-        }),
-        vscode.commands.registerCommand(CLOSE_ACTIVE_TERMINAL_COMMAND, () => {
-            provider.closeActiveTerminal()
-        }),
-        vscode.window.onDidOpenTerminal(() => {
-            provider.refreshTerminals()
-        }),
-        vscode.window.onDidCloseTerminal(() => {
-            provider.refreshTerminals()
-        }),
-        vscode.window.onDidChangeActiveTerminal(() => {
-            provider.refreshTerminals()
-        }),
-        vscode.window.onDidChangeTerminalState(() => {
-            provider.refreshTerminals()
-        }),
-        vscode.window.onDidChangeTerminalShellIntegration(() => {
-            provider.refreshTerminals()
+        vscode.commands.registerCommand(CLOSE_ACTIVE_SESSION_COMMAND, () => {
+            provider.closeActiveSession()
         })
     )
-
-    provider.refreshTerminals()
 }
 
 export function deactivate() {}
