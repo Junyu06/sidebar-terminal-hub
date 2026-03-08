@@ -1,6 +1,44 @@
 (function () {
+    const FONT_SIZE_MIN = 10
+    const FONT_SIZE_MAX = 32
+
     const vscode = acquireVsCodeApi()
     const config = window.__RST_CONFIG__ || {}
+
+    const fallbackMessages = {
+        documentTitle: 'Embedded Terminal',
+        viewTitle: 'Terminal Control',
+        tabCountOne: '{count} tab',
+        tabCountOther: '{count} tabs',
+        newSessionTitle: 'New terminal tab',
+        newSessionAria: 'New terminal tab',
+        openSettingsTitle: 'Open terminal settings',
+        openSettingsAria: 'Open terminal settings',
+        openQuickTerminalTitle: 'Open {label} terminal',
+        openQuickTerminalAria: 'Open {label} terminal',
+        readyTitle: 'Ready to run commands',
+        readyCopy: 'Create a terminal tab here and run tools like Codex, Claude, Gemini, or OpenCode directly inside the sidebar.',
+        createTerminal: 'Create terminal',
+        quickLaunch: 'Quick launch',
+        settingsTitle: 'Terminal Settings',
+        settingsSubtitle: 'Customize the embedded terminal experience.',
+        closeSettingsTitle: 'Close settings',
+        closeSettingsAria: 'Close settings',
+        terminalFontSize: 'Terminal font size',
+        decreaseFontSizeTitle: 'Decrease font size',
+        decreaseFontSizeAria: 'Decrease font size',
+        increaseFontSizeTitle: 'Increase font size',
+        increaseFontSizeAria: 'Increase font size',
+        interfaceLanguage: 'Interface language',
+        followSystem: 'Follow system',
+        languageChinese: '中文',
+        languageEnglish: 'English',
+        commandButtons: 'Command buttons',
+        cancel: 'Cancel',
+        save: 'Save',
+        closeSessionTitle: 'Close {name}',
+        closeSessionAria: 'Close {name}'
+    }
 
     const quickCommands = Array.isArray(config.quickCommands) ? config.quickCommands : []
     const defaultTerminalFontSize = Number.isFinite(config.defaultTerminalFontSize)
@@ -11,24 +49,39 @@
     const viewportElement = document.getElementById('viewport')
     const emptyStateElement = document.getElementById('empty-state')
     const tabCountElement = document.getElementById('tab-count')
+    const viewTitleElement = document.getElementById('view-title')
     const newSessionButton = document.getElementById('new-session')
     const createFirstSessionButton = document.getElementById('create-first-session')
     const settingsButton = document.getElementById('open-settings')
+    const emptyTitleElement = document.getElementById('empty-title')
+    const emptyCopyElement = document.getElementById('empty-copy')
+    const quickLaunchLabelElement = document.getElementById('quick-launch-label')
     const settingsModal = document.getElementById('settings-modal')
+    const settingsTitleElement = document.getElementById('settings-title')
+    const settingsSubtitleElement = document.getElementById('settings-subtitle')
     const settingsCloseButton = document.getElementById('settings-close')
     const settingsCancelButton = document.getElementById('settings-cancel')
     const settingsSaveButton = document.getElementById('settings-save')
-    const terminalFontSizeInput = document.getElementById('terminal-font-size')
+    const terminalFontSizeLabelElement = document.getElementById('terminal-font-size-label')
+    const terminalFontSizeValueElement = document.getElementById('terminal-font-size-value')
+    const decreaseFontSizeButton = document.getElementById('decrease-font-size')
+    const increaseFontSizeButton = document.getElementById('increase-font-size')
+    const interfaceLanguageLabelElement = document.getElementById('interface-language-label')
+    const interfaceLanguageSelect = document.getElementById('interface-language')
+    const commandButtonsTitleElement = document.getElementById('command-buttons-title')
 
     const sessionModels = new Map()
     let orderedSessions = []
     let activeSessionId = undefined
+    let currentLanguage = config.language === 'zh-CN' ? 'zh-CN' : 'en'
+    let messages = normalizeMessages(config.messages)
     let currentSettings = normalizeSettings(config.settings)
+    let draftTerminalFontSize = getTerminalFontSize()
 
     const quickCommandButtons = new Map(
         quickCommands.map(command => [
             command.id,
-            document.querySelector(`[data-quick-command-id="${command.id}"]`)
+            Array.from(document.querySelectorAll(`[data-quick-command-id="${command.id}"]`))
         ])
     )
 
@@ -54,7 +107,13 @@
             return undefined
         }
 
-        return Math.max(10, Math.min(32, Math.round(value)))
+        return Math.max(FONT_SIZE_MIN, Math.min(FONT_SIZE_MAX, Math.round(value)))
+    }
+
+    function normalizeLanguagePreference(value) {
+        return value === 'zh-CN' || value === 'en'
+            ? value
+            : 'system'
     }
 
     function normalizeSettings(value) {
@@ -67,8 +126,35 @@
 
         return {
             terminalFontSize: clampFontSize(value && value.terminalFontSize),
+            languagePreference: normalizeLanguagePreference(value && value.languagePreference),
             commandButtons
         }
+    }
+
+    function normalizeMessages(value) {
+        return Object.assign({}, fallbackMessages, value || {})
+    }
+
+    function formatMessage(template, values) {
+        return String(template || '').replace(/\{(\w+)\}/g, (_, key) => {
+            const value = values && values[key]
+            return value === undefined ? '' : String(value)
+        })
+    }
+
+    function formatTabCount(count) {
+        return formatMessage(count === 1 ? messages.tabCountOne : messages.tabCountOther, { count })
+    }
+
+    function updateFontSizeStepperState() {
+        terminalFontSizeValueElement.textContent = String(draftTerminalFontSize)
+        decreaseFontSizeButton.disabled = draftTerminalFontSize <= FONT_SIZE_MIN
+        increaseFontSizeButton.disabled = draftTerminalFontSize >= FONT_SIZE_MAX
+    }
+
+    function setDraftTerminalFontSize(nextValue) {
+        draftTerminalFontSize = clampFontSize(nextValue) || defaultTerminalFontSize
+        updateFontSizeStepperState()
     }
 
     function getTheme() {
@@ -228,13 +314,107 @@
         currentSettings = normalizeSettings(nextSettings)
 
         for (const command of quickCommands) {
-            const button = quickCommandButtons.get(command.id)
-            if (button) {
+            const buttons = quickCommandButtons.get(command.id) || []
+            for (const button of buttons) {
                 button.classList.toggle('hidden', !currentSettings.commandButtons[command.id])
             }
         }
 
         refreshTerminalAppearance()
+    }
+
+    function applyTranslations(nextMessages, nextLanguage) {
+        currentLanguage = nextLanguage === 'zh-CN' ? 'zh-CN' : 'en'
+        messages = normalizeMessages(nextMessages)
+
+        document.documentElement.lang = currentLanguage
+        document.title = messages.documentTitle
+
+        if (viewTitleElement) {
+            viewTitleElement.textContent = messages.viewTitle
+        }
+
+        if (tabCountElement) {
+            tabCountElement.textContent = formatTabCount(orderedSessions.length)
+        }
+
+        newSessionButton.title = messages.newSessionTitle
+        newSessionButton.setAttribute('aria-label', messages.newSessionAria)
+        settingsButton.title = messages.openSettingsTitle
+        settingsButton.setAttribute('aria-label', messages.openSettingsAria)
+
+        if (emptyTitleElement) {
+            emptyTitleElement.textContent = messages.readyTitle
+        }
+
+        if (emptyCopyElement) {
+            emptyCopyElement.textContent = messages.readyCopy
+        }
+
+        createFirstSessionButton.textContent = messages.createTerminal
+
+        if (quickLaunchLabelElement) {
+            quickLaunchLabelElement.textContent = messages.quickLaunch
+        }
+
+        if (settingsTitleElement) {
+            settingsTitleElement.textContent = messages.settingsTitle
+        }
+
+        if (settingsSubtitleElement) {
+            settingsSubtitleElement.textContent = messages.settingsSubtitle
+        }
+
+        settingsCloseButton.title = messages.closeSettingsTitle
+        settingsCloseButton.setAttribute('aria-label', messages.closeSettingsAria)
+
+        if (terminalFontSizeLabelElement) {
+            terminalFontSizeLabelElement.textContent = messages.terminalFontSize
+        }
+
+        decreaseFontSizeButton.title = messages.decreaseFontSizeTitle
+        decreaseFontSizeButton.setAttribute('aria-label', messages.decreaseFontSizeAria)
+        increaseFontSizeButton.title = messages.increaseFontSizeTitle
+        increaseFontSizeButton.setAttribute('aria-label', messages.increaseFontSizeAria)
+
+        if (interfaceLanguageLabelElement) {
+            interfaceLanguageLabelElement.textContent = messages.interfaceLanguage
+        }
+
+        if (interfaceLanguageSelect) {
+            const systemOption = interfaceLanguageSelect.querySelector('option[value="system"]')
+            const chineseOption = interfaceLanguageSelect.querySelector('option[value="zh-CN"]')
+            const englishOption = interfaceLanguageSelect.querySelector('option[value="en"]')
+
+            if (systemOption) {
+                systemOption.textContent = messages.followSystem
+            }
+
+            if (chineseOption) {
+                chineseOption.textContent = messages.languageChinese
+            }
+
+            if (englishOption) {
+                englishOption.textContent = messages.languageEnglish
+            }
+        }
+
+        if (commandButtonsTitleElement) {
+            commandButtonsTitleElement.textContent = messages.commandButtons
+        }
+
+        settingsCancelButton.textContent = messages.cancel
+        settingsSaveButton.textContent = messages.save
+
+        for (const command of quickCommands) {
+            const title = formatMessage(messages.openQuickTerminalTitle, { label: command.label })
+            const ariaLabel = formatMessage(messages.openQuickTerminalAria, { label: command.label })
+
+            for (const button of quickCommandButtons.get(command.id) || []) {
+                button.title = title
+                button.setAttribute('aria-label', ariaLabel)
+            }
+        }
     }
 
     function switchActiveSession(sessionId, notifyExtension) {
@@ -265,7 +445,10 @@
 
     function renderTabs() {
         tabsElement.replaceChildren()
-        tabCountElement.textContent = `${orderedSessions.length} tab${orderedSessions.length === 1 ? '' : 's'}`
+
+        if (tabCountElement) {
+            tabCountElement.textContent = formatTabCount(orderedSessions.length)
+        }
 
         for (const session of orderedSessions) {
             const tab = document.createElement('div')
@@ -294,8 +477,8 @@
             const closeButton = document.createElement('button')
             closeButton.type = 'button'
             closeButton.className = 'tab-close'
-            closeButton.title = `Close ${session.name}`
-            closeButton.setAttribute('aria-label', `Close ${session.name}`)
+            closeButton.title = formatMessage(messages.closeSessionTitle, { name: session.name })
+            closeButton.setAttribute('aria-label', formatMessage(messages.closeSessionAria, { name: session.name }))
             closeButton.appendChild(createCloseIcon())
             closeButton.addEventListener('click', event => {
                 event.stopPropagation()
@@ -326,7 +509,8 @@
     }
 
     function syncState(payload) {
-        const incomingIds = new Set(payload.sessions.map(session => session.id))
+        const sessions = Array.isArray(payload.sessions) ? payload.sessions : []
+        const incomingIds = new Set(sessions.map(session => session.id))
 
         for (const existingId of Array.from(sessionModels.keys())) {
             if (!incomingIds.has(existingId)) {
@@ -334,10 +518,11 @@
             }
         }
 
-        orderedSessions = payload.sessions
+        orderedSessions = sessions
+        applyTranslations(payload.messages || messages, payload.language || currentLanguage)
         applySettings(payload.settings || currentSettings)
 
-        for (const session of payload.sessions) {
+        for (const session of sessions) {
             let model = sessionModels.get(session.id)
             if (!model) {
                 model = createSessionModel(session)
@@ -346,7 +531,7 @@
             }
         }
 
-        const nextActiveSessionId = payload.activeSessionId || payload.sessions[0] && payload.sessions[0].id
+        const nextActiveSessionId = payload.activeSessionId || sessions[0] && sessions[0].id
         if (!nextActiveSessionId) {
             activeSessionId = undefined
         } else if (nextActiveSessionId !== activeSessionId) {
@@ -380,7 +565,11 @@
     }
 
     function populateSettingsForm() {
-        terminalFontSizeInput.value = String(getTerminalFontSize())
+        setDraftTerminalFontSize(getTerminalFontSize())
+
+        if (interfaceLanguageSelect) {
+            interfaceLanguageSelect.value = currentSettings.languagePreference
+        }
 
         for (const command of quickCommands) {
             const toggle = quickCommandToggles.get(command.id)
@@ -394,8 +583,7 @@
         populateSettingsForm()
         settingsModal.classList.remove('hidden')
         requestAnimationFrame(() => {
-            terminalFontSizeInput.focus()
-            terminalFontSizeInput.select()
+            decreaseFontSizeButton.focus()
         })
     }
 
@@ -412,7 +600,8 @@
         }
 
         const nextSettings = {
-            terminalFontSize: clampFontSize(Number(terminalFontSizeInput.value)) || defaultTerminalFontSize,
+            terminalFontSize: draftTerminalFontSize,
+            languagePreference: normalizeLanguagePreference(interfaceLanguageSelect && interfaceLanguageSelect.value),
             commandButtons
         }
 
@@ -446,15 +635,20 @@
         postMessage('create-session')
     })
 
-    for (const command of quickCommands) {
-        const button = quickCommandButtons.get(command.id)
-        if (!button) {
-            continue
-        }
+    decreaseFontSizeButton.addEventListener('click', () => {
+        setDraftTerminalFontSize(draftTerminalFontSize - 1)
+    })
 
-        button.addEventListener('click', () => {
-            postMessage('create-quick-session', { quickCommandId: command.id })
-        })
+    increaseFontSizeButton.addEventListener('click', () => {
+        setDraftTerminalFontSize(draftTerminalFontSize + 1)
+    })
+
+    for (const command of quickCommands) {
+        for (const button of quickCommandButtons.get(command.id) || []) {
+            button.addEventListener('click', () => {
+                postMessage('create-quick-session', { quickCommandId: command.id })
+            })
+        }
     }
 
     settingsButton.addEventListener('click', () => {
@@ -490,6 +684,8 @@
         model && model.terminal.focus()
     })
 
+    applyTranslations(messages, currentLanguage)
     applySettings(currentSettings)
+    updateFontSizeStepperState()
     postMessage('ready')
 })()

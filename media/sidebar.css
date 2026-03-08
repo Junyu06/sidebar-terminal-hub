@@ -22,7 +22,8 @@ body {
 }
 
 button,
-input {
+input,
+select {
     font: inherit;
 }
 
@@ -47,7 +48,7 @@ button {
     justify-content: space-between;
     flex-wrap: wrap;
     gap: 8px;
-    padding: 10px 12px 8px;
+    padding: 0;
     border-bottom: 1px solid var(--vscode-sideBarSectionHeader-border, rgba(127, 127, 127, 0.16));
 }
 
@@ -121,8 +122,11 @@ button {
 .tab-trigger:focus-visible,
 .tab-close:focus-visible,
 .number-input:focus-visible,
+.select-input:focus-visible,
+.stepper-button:focus-visible,
 .secondary-button:focus-visible,
 .primary-button:focus-visible,
+.welcome-quick-button:focus-visible,
 .checkbox-input:focus-visible {
     outline: 1px solid var(--vscode-focusBorder);
     outline-offset: 1px;
@@ -135,7 +139,7 @@ button {
     gap: 8px;
     overflow-x: hidden;
     overflow-y: auto;
-    padding: 8px 12px 10px;
+    padding: 8px 0;
     border-bottom: 1px solid var(--vscode-sideBarSectionHeader-border, rgba(127, 127, 127, 0.16));
 }
 
@@ -143,10 +147,10 @@ button {
     display: flex;
     align-items: center;
     gap: 6px;
-    width: 120px;
+    width: 100px;
     min-width: 80px;
     max-width: 120px;
-    flex: 0 1 120px;
+    flex: 0 1 100px;
     border-radius: 10px;
     border: 1px solid transparent;
     background: color-mix(in srgb, var(--vscode-editorWidget-background) 66%, transparent);
@@ -271,13 +275,32 @@ button {
 }
 
 .empty-card {
-    max-width: 300px;
+    width: min(100%, 360px);
     display: grid;
-    gap: 12px;
-    padding: 16px;
+    gap: 14px;
+    padding: 18px;
     border: 1px solid var(--vscode-widget-border, rgba(127, 127, 127, 0.16));
-    border-radius: 12px;
+    border-radius: 16px;
     background: color-mix(in srgb, var(--vscode-editorWidget-background) 82%, transparent);
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.16);
+}
+
+.empty-actions,
+.quick-launch-group {
+    display: grid;
+    gap: 10px;
+}
+
+.quick-launch-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--vscode-descriptionForeground);
+}
+
+.quick-launch-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
 }
 
 .empty-title,
@@ -301,6 +324,11 @@ button {
     border: 1px solid transparent;
     padding: 0 12px;
     cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: background-color 0.18s ease, border-color 0.18s ease, transform 0.16s ease;
 }
 
 .primary-button {
@@ -319,6 +347,34 @@ button {
 
 .secondary-button:hover {
     background: color-mix(in srgb, var(--vscode-editorWidget-background) 94%, transparent);
+}
+
+.primary-button:active,
+.secondary-button:active,
+.welcome-quick-button:active {
+    transform: translateY(1px);
+}
+
+.welcome-quick-button {
+    justify-content: flex-start;
+    min-height: 36px;
+    padding: 0 12px;
+    border-radius: 12px;
+}
+
+.welcome-quick-button:hover {
+    border-color: var(--vscode-focusBorder);
+}
+
+.welcome-quick-icon {
+    flex: none;
+}
+
+.welcome-quick-copy {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .modal {
@@ -361,14 +417,73 @@ button {
     gap: 8px;
 }
 
+.stepper {
+    display: grid;
+    grid-template-columns: 40px minmax(0, 1fr) 40px;
+    align-items: center;
+    gap: 10px;
+}
+
+.stepper-button {
+    width: 40px;
+    height: 40px;
+    border: 1px solid var(--vscode-widget-border, rgba(127, 127, 127, 0.24));
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--vscode-editorWidget-background) 88%, transparent);
+    color: var(--vscode-foreground);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.18s ease, border-color 0.18s ease, transform 0.16s ease, box-shadow 0.18s ease;
+}
+
+.stepper-button:hover {
+    background: var(--vscode-toolbar-hoverBackground, rgba(127, 127, 127, 0.12));
+    border-color: var(--vscode-focusBorder);
+}
+
+.stepper-button:active {
+    transform: scale(0.94);
+    box-shadow: inset 0 0 0 999px rgba(0, 0, 0, 0.06);
+}
+
+.stepper-button:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
+.stepper-button span {
+    font-size: 18px;
+    font-weight: 700;
+    line-height: 1;
+}
+
+.stepper-value,
+.select-input,
 .number-input {
     width: 100%;
-    min-height: 34px;
-    border-radius: 8px;
+    min-height: 40px;
+    border-radius: 12px;
     border: 1px solid var(--vscode-input-border, transparent);
     background: var(--vscode-input-background);
     color: var(--vscode-input-foreground);
     padding: 0 10px;
+}
+
+.stepper-value {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    user-select: none;
+}
+
+.select-input {
+    appearance: none;
 }
 
 .settings-group {
@@ -411,7 +526,11 @@ button {
 @media (prefers-reduced-motion: reduce) {
     .icon-button,
     .tab,
-    .tab-close {
+    .tab-close,
+    .primary-button,
+    .secondary-button,
+    .welcome-quick-button,
+    .stepper-button {
         transition: none;
     }
 }
