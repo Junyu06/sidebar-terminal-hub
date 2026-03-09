@@ -181,6 +181,8 @@ type WebviewMessage =
     | { type: 'resize'; sessionId: string; cols: number; rows: number }
     | { type: 'close-session'; sessionId: string }
     | { type: 'update-settings'; settings: StoredSidebarSettings }
+    | { type: 'request-copy'; text: string }
+    | { type: 'request-paste'; sessionId: string }
 
 export class TerminalSidebarProvider implements vscode.WebviewViewProvider, vscode.Disposable {
     private readonly sessions = new Map<string, SidebarSession>()
@@ -338,6 +340,45 @@ export class TerminalSidebarProvider implements vscode.WebviewViewProvider, vsco
             case 'update-settings':
                 void this.updateSettings(message.settings)
                 return
+            case 'request-copy':
+                void this.copyToClipboard(message.text)
+                return
+            case 'request-paste':
+                void this.pasteFromClipboard(message.sessionId)
+                return
+        }
+    }
+
+    private async copyToClipboard(text: string) {
+        if (!text) {
+            return
+        }
+
+        try {
+            await vscode.env.clipboard.writeText(text)
+        } catch {
+        }
+    }
+
+    private async pasteFromClipboard(sessionId: string) {
+        if (!this.sessions.has(sessionId)) {
+            return
+        }
+
+        try {
+            const text = await vscode.env.clipboard.readText()
+            if (!text) {
+                return
+            }
+
+            this.postMessage({
+                type: 'paste-clipboard-data',
+                payload: {
+                    sessionId,
+                    text
+                }
+            })
+        } catch {
         }
     }
 

@@ -193,6 +193,12 @@
         return currentSettings.terminalFontSize || defaultTerminalFontSize
     }
 
+    function isCopyKeybinding(event) {
+        const key = String(event.key || '').toLowerCase()
+        const hasPrimaryModifier = (event.ctrlKey || event.metaKey) && !(event.ctrlKey && event.metaKey)
+        return hasPrimaryModifier && !event.altKey && key === 'c'
+    }
+
     function createSessionModel(session) {
         const host = document.createElement('div')
         host.className = 'terminal-host hidden'
@@ -212,6 +218,29 @@
         const fitAddon = new window.FitAddon.FitAddon()
         terminal.loadAddon(fitAddon)
         terminal.open(host)
+
+        terminal.attachCustomKeyEventHandler(event => {
+            if (!isCopyKeybinding(event) || !terminal.hasSelection()) {
+                return true
+            }
+
+            const text = terminal.getSelection()
+            if (!text) {
+                return true
+            }
+
+            event.preventDefault()
+            event.stopPropagation()
+            postMessage('request-copy', { text })
+            return false
+        })
+
+        host.addEventListener('contextmenu', event => {
+            event.preventDefault()
+            event.stopPropagation()
+            terminal.focus()
+            postMessage('request-paste', { sessionId: session.id })
+        }, true)
 
         terminal.onData(data => {
             postMessage('input', {
@@ -564,6 +593,20 @@
         renderTabs()
     }
 
+    function handleClipboardPaste(payload) {
+        if (!payload || !payload.sessionId || typeof payload.text !== 'string' || payload.text.length === 0) {
+            return
+        }
+
+        const model = sessionModels.get(payload.sessionId)
+        if (!model) {
+            return
+        }
+
+        model.terminal.focus()
+        model.terminal.paste(payload.text)
+    }
+
     function populateSettingsForm() {
         setDraftTerminalFontSize(getTerminalFontSize())
 
@@ -624,6 +667,11 @@
 
         if (message.type === 'session-exit') {
             handleSessionExit(message.payload)
+            return
+        }
+
+        if (message.type === 'paste-clipboard-data') {
+            handleClipboardPaste(message.payload)
         }
     })
 

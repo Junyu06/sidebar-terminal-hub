@@ -2,7 +2,7 @@
   "name": "right-sidebar-terminal",
   "displayName": "Right Sidebar Terminal",
   "description": "Embedded command-line terminal in the secondary sidebar",
-  "version": "0.0.23",
+  "version": "0.0.26",
   "repository": {
     "type": "git",
     "url": "https://gitee.com/wagio_admin/vscode-right-sidebar-terminal"
@@ -62,6 +62,7 @@
     "typescript": "^5.0.0"
   },
   "dependencies": {
+    "@openai/codex": "^0.111.0",
     "node-pty": "^1.1.0",
     "xterm": "^5.3.0",
     "xterm-addon-fit": "^0.8.0"

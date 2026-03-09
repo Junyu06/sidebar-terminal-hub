@@ -176,7 +176,7 @@ button {
     display: flex;
     align-items: center;
     gap: 6px;
-    padding: 8px 2px 8px 10px;
+    padding: 3px 2px 3px 10px;
     border: 0;
     border-radius: 10px;
     background: transparent;
@@ -207,8 +207,8 @@ button {
 }
 
 .tab-close {
-    width: 24px;
-    height: 24px;
+    width: 20px;
+    height: 20px;
     flex: none;
     margin-right: 4px;
     border: 0;
