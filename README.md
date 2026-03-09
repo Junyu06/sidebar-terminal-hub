@@ -4,7 +4,7 @@
 
 现在不是“点按钮再打开原生命令行标签”，而是**在侧边栏里直接显示终端窗口**，可以直接输入并运行 `codex`、`opencode` 等 CLI 命令。
 
-![alt text](media/readme_image_1.png)
+![Right Sidebar Terminal screenshot](https://gitee.com/wagio_admin/vscode-right-sidebar-terminal/raw/main/media/readme_image_1.png)
 
 ## 功能特性
 
