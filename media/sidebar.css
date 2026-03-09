@@ -23,6 +23,7 @@ body {
 
 button,
 input,
+textarea,
 select {
     font: inherit;
 }
@@ -38,8 +39,14 @@ button {
 .layout {
     height: 100vh;
     display: grid;
-    grid-template-rows: auto auto 1fr;
+    grid-template-rows: auto 1fr;
     min-height: 0;
+}
+
+.terminal-content {
+    min-height: 0;
+    display: grid;
+    grid-template-rows: auto 1fr;
 }
 
 .titlebar {
@@ -48,7 +55,7 @@ button {
     justify-content: space-between;
     flex-wrap: wrap;
     gap: 8px;
-    padding: 0;
+    padding: 0 0 5px 0;
     border-bottom: 1px solid var(--vscode-sideBarSectionHeader-border, rgba(127, 127, 127, 0.16));
 }
 
@@ -80,6 +87,13 @@ button {
     display: flex;
     align-items: center;
     justify-content: flex-end;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.toolbar-quick-commands {
+    display: flex;
+    align-items: center;
     flex-wrap: wrap;
     gap: 6px;
 }
@@ -122,7 +136,10 @@ button {
 .tab-trigger:focus-visible,
 .tab-close:focus-visible,
 .number-input:focus-visible,
+.text-input:focus-visible,
+.textarea-input:focus-visible,
 .select-input:focus-visible,
+.settings-tab:focus-visible,
 .stepper-button:focus-visible,
 .secondary-button:focus-visible,
 .primary-button:focus-visible,
@@ -143,6 +160,11 @@ button {
     border-bottom: 1px solid var(--vscode-sideBarSectionHeader-border, rgba(127, 127, 127, 0.16));
 }
 
+.tabs.tabs-empty {
+    padding: 0;
+    border-bottom: none;
+}
+
 .tab {
     display: flex;
     align-items: center;
@@ -151,7 +173,7 @@ button {
     min-width: 80px;
     max-width: 120px;
     flex: 0 1 100px;
-    border-radius: 10px;
+    border-radius: 8px;
     border: 1px solid transparent;
     background: color-mix(in srgb, var(--vscode-editorWidget-background) 66%, transparent);
     transition: background-color 0.18s ease, border-color 0.18s ease;
@@ -243,6 +265,21 @@ button {
     display: block;
 }
 
+.quick-command-fallback {
+    width: 16px;
+    height: 16px;
+    border-radius: 5px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: color-mix(in srgb, var(--vscode-button-background) 22%, transparent);
+    color: var(--vscode-foreground);
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 1;
+    text-transform: uppercase;
+}
+
 .stage {
     position: relative;
     min-height: 0;
@@ -261,7 +298,7 @@ button {
 .terminal-host {
     position: absolute;
     inset: 0;
-    padding: 0px;
+    padding: var(--rst-terminal-padding, 0px);
 }
 
 .terminal-host.hidden {
@@ -377,39 +414,98 @@ button {
     white-space: nowrap;
 }
 
-.modal {
-    position: fixed;
-    inset: 0;
-    z-index: 20;
+.settings-page {
     display: grid;
-    place-items: center;
-    padding: 16px;
-    background: color-mix(in srgb, var(--vscode-editor-background) 40%, transparent);
-    backdrop-filter: blur(4px);
+    min-height: 0;
+    padding-top: 14px;
 }
 
-.modal-card {
-    width: min(100%, 340px);
+.settings-shell {
+    width: 100%;
     display: grid;
+    grid-template-rows: auto auto minmax(0, 1fr) auto;
     gap: 14px;
-    padding: 16px;
+    min-height: 0;
+    padding: 0;
     border-radius: 14px;
-    border: 1px solid var(--vscode-widget-border, rgba(127, 127, 127, 0.24));
-    background: var(--vscode-editorWidget-background, var(--vscode-sideBar-background));
-    box-shadow: 0 14px 32px rgba(0, 0, 0, 0.24);
+    background: transparent;
 }
 
-.modal-header,
-.modal-actions {
+.settings-page-header,
+.settings-page-actions {
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 10px;
 }
 
-.modal-body {
+.settings-page-actions {
+    margin-bottom: 20px;
+}
+
+.settings-page-body {
+    display: grid;
+    gap: 0;
+    min-height: 0;
+    overflow: auto;
+    padding-right: 4px;
+}
+
+.settings-tabs {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px;
+    border-radius: 12px;
+    background: color-mix(in srgb, var(--vscode-editorWidget-background) 84%, transparent);
+    border: 1px solid var(--vscode-widget-border, rgba(127, 127, 127, 0.2));
+}
+
+.settings-tab {
+    min-height: 34px;
+    padding: 0 14px;
+    border: 1px solid transparent;
+    border-radius: 10px;
+    background: transparent;
+    color: var(--vscode-descriptionForeground);
+    cursor: pointer;
+    transition: background-color 0.18s ease, border-color 0.18s ease, color 0.18s ease;
+}
+
+.settings-tab:hover {
+    color: var(--vscode-foreground);
+}
+
+.settings-tab.active {
+    color: var(--vscode-button-foreground, var(--vscode-foreground));
+    background: var(--vscode-button-background);
+    border-color: color-mix(in srgb, var(--vscode-button-background) 72%, var(--vscode-focusBorder));
+}
+
+.settings-panel {
+    display: grid;
+    gap: 12px;
+    align-content: start;
+}
+
+.settings-panel[hidden] {
+    display: none !important;
+}
+
+.settings-card {
     display: grid;
     gap: 14px;
+    padding: 14px;
+    border-radius: 14px;
+    border: 1px solid var(--vscode-widget-border, rgba(127, 127, 127, 0.2));
+    background: color-mix(in srgb, var(--vscode-editorWidget-background) 86%, transparent);
+}
+
+.settings-switch-card {
+    padding: 10px 12px;
+    border-radius: 12px;
+    border: 1px solid var(--vscode-widget-border, rgba(127, 127, 127, 0.18));
+    background: color-mix(in srgb, var(--vscode-sideBar-background) 90%, transparent);
 }
 
 .field {
@@ -486,9 +582,47 @@ button {
     appearance: none;
 }
 
+.text-input,
+.textarea-input {
+    width: 100%;
+    border-radius: 12px;
+    border: 1px solid var(--vscode-input-border, transparent);
+    background: var(--vscode-input-background);
+    color: var(--vscode-input-foreground);
+    padding: 10px;
+    resize: vertical;
+}
+
+.textarea-input {
+    min-height: 76px;
+    line-height: 1.45;
+}
+
+.field-hint,
+.toggle-hint {
+    color: var(--vscode-descriptionForeground);
+    line-height: 1.45;
+    font-size: 12px;
+    flex: 1;
+    min-width: 0;
+}
+
 .settings-group {
     display: grid;
     gap: 8px;
+}
+
+.settings-group-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.add-quick-command-button {
+    min-height: 30px;
+    padding: 0 10px;
+    white-space: nowrap;
 }
 
 .toggle-row {
@@ -497,17 +631,121 @@ button {
     justify-content: space-between;
     gap: 12px;
     min-height: 34px;
-    padding: 0 2px;
+}
+
+.toggle-row-rich {
+    align-items: flex-start;
 }
 
 .toggle-copy {
     min-width: 0;
+    display: grid;
+    gap: 4px;
 }
 
 .checkbox-input {
     width: 16px;
     height: 16px;
     accent-color: var(--vscode-button-background);
+}
+
+.quick-command-list {
+    display: grid;
+    gap: 10px;
+}
+
+.quick-command-empty {
+    padding: 14px 12px;
+    border-radius: 12px;
+    border: 1px dashed var(--vscode-widget-border, rgba(127, 127, 127, 0.24));
+    color: var(--vscode-descriptionForeground);
+}
+
+.quick-command-editor {
+    display: grid;
+    gap: 12px;
+    padding: 12px;
+    border-radius: 12px;
+    border: 1px solid var(--vscode-widget-border, rgba(127, 127, 127, 0.24));
+    background: color-mix(in srgb, var(--vscode-editorWidget-background) 88%, transparent);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+}
+
+.quick-command-editor-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.quick-command-preview {
+    width: 32px;
+    height: 32px;
+    border-radius: 10px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: color-mix(in srgb, var(--vscode-button-background) 16%, transparent);
+    border: 1px solid var(--vscode-widget-border, rgba(127, 127, 127, 0.2));
+}
+
+.quick-command-preview-icon {
+    width: 18px;
+    height: 18px;
+}
+
+.quick-command-editor-controls {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-left: auto;
+}
+
+.toggle-inline {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.quick-command-visibility,
+.quick-command-remove {
+    flex: none;
+}
+
+.quick-command-visibility.is-hidden {
+    color: var(--vscode-descriptionForeground);
+}
+
+.quick-command-remove {
+    flex: none;
+}
+
+.quick-command-fields {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+}
+
+.quick-command-field-icon {
+    grid-column: 1 / -1;
+}
+
+@media (max-width: 640px) {
+    .quick-command-fields {
+        grid-template-columns: 1fr;
+    }
+
+    .settings-group-header,
+    .settings-page-actions {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .settings-tabs {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
 }
 
 .xterm {

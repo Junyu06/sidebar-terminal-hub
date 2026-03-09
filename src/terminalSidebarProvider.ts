@@ -20,16 +20,31 @@ export const CLOSE_ACTIVE_SESSION_COMMAND = 'terminalSidebar.closeActiveSession'
 const MAX_BUFFER_LENGTH = 200_000
 const SETTINGS_KEY = 'terminalSidebar.settings'
 
-const QUICK_COMMANDS = [
-    { id: 'codex', label: 'Codex', command: 'codex' },
-    { id: 'claude', label: 'Claude', command: 'claude' },
-    { id: 'gemini', label: 'Gemini', command: 'gemini' },
-    { id: 'opencode', label: 'OpenCode', command: 'opencode' }
+const DEFAULT_QUICK_COMMANDS = [
+    { id: 'codex', label: 'Codex', command: 'codex', icon: 'builtin:codex' },
+    { id: 'claude', label: 'Claude', command: 'claude', icon: 'builtin:claude' },
+    { id: 'gemini', label: 'Gemini', command: 'gemini', icon: 'builtin:gemini' },
+    { id: 'opencode', label: 'OpenCode', command: 'opencode', icon: 'builtin:opencode' }
 ] as const
 
-type QuickCommandId = (typeof QUICK_COMMANDS)[number]['id']
 type LanguagePreference = 'system' | 'zh-CN' | 'en'
 type ResolvedLanguage = 'zh-CN' | 'en'
+
+interface SidebarQuickCommand {
+    id: string
+    label: string
+    command: string
+    icon: string
+    visible: boolean
+}
+
+interface StoredSidebarQuickCommand {
+    id?: string
+    label?: string
+    command?: string
+    icon?: string
+    visible?: boolean
+}
 
 interface UiMessages {
     documentTitle: string
@@ -48,6 +63,8 @@ interface UiMessages {
     quickLaunch: string
     settingsTitle: string
     settingsSubtitle: string
+    appearanceSettingsTab: string
+    commandSettingsTab: string
     closeSettingsTitle: string
     closeSettingsAria: string
     terminalFontSize: string
@@ -56,10 +73,25 @@ interface UiMessages {
     increaseFontSizeTitle: string
     increaseFontSizeAria: string
     interfaceLanguage: string
+    terminalPadding: string
+    terminalPaddingHint: string
     followSystem: string
     languageChinese: string
     languageEnglish: string
     commandButtons: string
+    addQuickCommand: string
+    removeQuickCommandTitle: string
+    quickCommandShowTitle: string
+    quickCommandHideTitle: string
+    quickCommandEmpty: string
+    quickCommandLabel: string
+    quickCommandCommand: string
+    quickCommandIcon: string
+    quickCommandVisible: string
+    quickCommandLabelPlaceholder: string
+    quickCommandCommandPlaceholder: string
+    quickCommandIconPlaceholder: string
+    quickCommandIconHint: string
     cancel: string
     save: string
     closeSessionTitle: string
@@ -87,6 +119,8 @@ const UI_MESSAGES: Record<ResolvedLanguage, UiMessages> = {
         quickLaunch: 'Quick launch',
         settingsTitle: 'Terminal Settings',
         settingsSubtitle: 'Customize the embedded terminal experience.',
+        appearanceSettingsTab: 'Interface',
+        commandSettingsTab: 'Buttons',
         closeSettingsTitle: 'Close settings',
         closeSettingsAria: 'Close settings',
         terminalFontSize: 'Terminal font size',
@@ -95,10 +129,25 @@ const UI_MESSAGES: Record<ResolvedLanguage, UiMessages> = {
         increaseFontSizeTitle: 'Increase font size',
         increaseFontSizeAria: 'Increase font size',
         interfaceLanguage: 'Interface language',
+        terminalPadding: 'Terminal padding',
+        terminalPaddingHint: 'Enable 8px 6px 8px 8px padding around the terminal content. If CLI windows such as Claude Code, OpenCode, or Gemini render incorrectly, slightly adjust the sidebar width and the layout will automatically recover.',
         followSystem: 'Follow system',
         languageChinese: '中文',
         languageEnglish: 'English',
-        commandButtons: 'Command buttons',
+        commandButtons: 'Quick buttons',
+        addQuickCommand: 'Add button',
+        removeQuickCommandTitle: 'Remove quick button',
+        quickCommandShowTitle: 'Show quick button',
+        quickCommandHideTitle: 'Hide quick button',
+        quickCommandEmpty: 'No quick buttons yet.',
+        quickCommandLabel: 'Label',
+        quickCommandCommand: 'Command',
+        quickCommandIcon: 'Icon',
+        quickCommandVisible: 'Show',
+        quickCommandLabelPlaceholder: 'Shown text, for example Codex',
+        quickCommandCommandPlaceholder: 'Command to run, for example codex',
+        quickCommandIconPlaceholder: 'https://..., data:image/...;base64,..., or <svg>...</svg>',
+        quickCommandIconHint: 'Supports image URL, Base64 data URL, or SVG code. Leave blank to use the first command letter.',
         cancel: 'Cancel',
         save: 'Save',
         closeSessionTitle: 'Close {name}',
@@ -121,6 +170,8 @@ const UI_MESSAGES: Record<ResolvedLanguage, UiMessages> = {
         quickLaunch: '快捷启动',
         settingsTitle: '终端设置',
         settingsSubtitle: '自定义侧边栏终端体验。',
+        appearanceSettingsTab: '界面设置',
+        commandSettingsTab: '按钮设置',
         closeSettingsTitle: '关闭设置',
         closeSettingsAria: '关闭设置',
         terminalFontSize: '终端字体大小',
@@ -128,11 +179,26 @@ const UI_MESSAGES: Record<ResolvedLanguage, UiMessages> = {
         decreaseFontSizeAria: '减小字体大小',
         increaseFontSizeTitle: '增大字体大小',
         increaseFontSizeAria: '增大字体大小',
-        interfaceLanguage: '界面语言',
+        interfaceLanguage: '界面语言（Interface language）',
+        terminalPadding: '终端内边距',
+        terminalPaddingHint: '启用后在终端四周使用 8px 6px 8px 8px 的内边距，若 Claude Code、OpenCode、Gemini 等 CLI 窗口内容出现显示混乱时，可以稍微调整侧栏宽度，调整后内容会自动修复。',
         followSystem: '跟随系统',
         languageChinese: '中文',
         languageEnglish: 'English',
-        commandButtons: '命令按钮',
+        commandButtons: '快捷按钮',
+        addQuickCommand: '添加按钮',
+        removeQuickCommandTitle: '删除快捷按钮',
+        quickCommandShowTitle: '显示快捷按钮',
+        quickCommandHideTitle: '隐藏快捷按钮',
+        quickCommandEmpty: '还没有快捷按钮。',
+        quickCommandLabel: '名称',
+        quickCommandCommand: '命令',
+        quickCommandIcon: '图标',
+        quickCommandVisible: '显示',
+        quickCommandLabelPlaceholder: '显示名称，例如 Codex',
+        quickCommandCommandPlaceholder: '要执行的命令，例如 codex',
+        quickCommandIconPlaceholder: 'https://...、data:image/...;base64,... 或 <svg>...</svg>',
+        quickCommandIconHint: '支持图片 URL、Base64 Data URL 或 SVG 代码；留空时使用命令首字母。',
         cancel: '取消',
         save: '保存',
         closeSessionTitle: '关闭 {name}',
@@ -157,13 +223,16 @@ interface SidebarSession {
 interface SidebarSettings {
     terminalFontSize?: number
     languagePreference: LanguagePreference
-    commandButtons: Record<QuickCommandId, boolean>
+    terminalPaddingEnabled: boolean
+    quickCommands: SidebarQuickCommand[]
 }
 
 interface StoredSidebarSettings {
     terminalFontSize?: number
     languagePreference?: LanguagePreference
-    commandButtons?: Partial<Record<QuickCommandId, boolean>>
+    terminalPaddingEnabled?: boolean
+    quickCommands?: StoredSidebarQuickCommand[]
+    commandButtons?: Record<string, boolean>
 }
 
 interface SpawnSessionOptions {
@@ -175,7 +244,7 @@ interface SpawnSessionOptions {
 type WebviewMessage =
     | { type: 'ready' }
     | { type: 'create-session' }
-    | { type: 'create-quick-session'; quickCommandId: QuickCommandId }
+    | { type: 'create-quick-session'; quickCommandId: string }
     | { type: 'set-active-session'; sessionId: string }
     | { type: 'input'; sessionId: string; data: string }
     | { type: 'resize'; sessionId: string; cols: number; rows: number }
@@ -382,8 +451,8 @@ export class TerminalSidebarProvider implements vscode.WebviewViewProvider, vsco
         }
     }
 
-    private spawnQuickSession(quickCommandId: QuickCommandId) {
-        const quickCommand = QUICK_COMMANDS.find(item => item.id === quickCommandId)
+    private spawnQuickSession(quickCommandId: string) {
+        const quickCommand = this.settings.quickCommands.find(item => item.id === quickCommandId)
         if (!quickCommand) {
             return
         }
@@ -672,17 +741,16 @@ export class TerminalSidebarProvider implements vscode.WebviewViewProvider, vsco
     }
 
     private normalizeSettings(settings?: StoredSidebarSettings): SidebarSettings {
-        const commandButtons = this.getDefaultCommandButtons()
-
-        for (const command of QUICK_COMMANDS) {
-            commandButtons[command.id] = settings?.commandButtons?.[command.id] ?? true
-        }
-
         return {
             terminalFontSize: this.normalizeFontSize(settings?.terminalFontSize),
             languagePreference: this.normalizeLanguagePreference(settings?.languagePreference),
-            commandButtons
+            terminalPaddingEnabled: this.normalizeTerminalPaddingEnabled(settings?.terminalPaddingEnabled),
+            quickCommands: this.normalizeQuickCommands(settings?.quickCommands, settings?.commandButtons)
         }
+    }
+
+    private normalizeTerminalPaddingEnabled(value: boolean | undefined) {
+        return value === true
     }
 
     private normalizeFontSize(fontSize: number | undefined) {
@@ -713,54 +781,180 @@ export class TerminalSidebarProvider implements vscode.WebviewViewProvider, vsco
         return 13
     }
 
-    private getDefaultCommandButtons(): Record<QuickCommandId, boolean> {
-        const commandButtons = {} as Record<QuickCommandId, boolean>
+    private normalizeQuickCommands(
+        commands: StoredSidebarQuickCommand[] | undefined,
+        legacyCommandButtons: Record<string, boolean> | undefined
+    ) {
+        const defaults = this.getDefaultQuickCommands(legacyCommandButtons)
 
-        for (const command of QUICK_COMMANDS) {
-            commandButtons[command.id] = true
+        if (!Array.isArray(commands)) {
+            return defaults
         }
 
-        return commandButtons
+        const defaultMap = new Map(defaults.map(command => [command.id, command]))
+        const usedIds = new Set<string>()
+        const normalized: SidebarQuickCommand[] = []
+
+        for (const [index, command] of commands.entries()) {
+            const defaultCommand = typeof command?.id === 'string'
+                ? defaultMap.get(command.id.trim())
+                : undefined
+            const nextCommand = this.normalizeQuickCommand(command, index, defaultCommand, usedIds)
+            if (nextCommand) {
+                normalized.push(nextCommand)
+            }
+        }
+
+        return normalized
     }
 
-    private getToolbarButtonsHtml(webview: vscode.Webview, messages: UiMessages) {
-        return QUICK_COMMANDS.map(command => {
-            const hiddenClass = this.settings.commandButtons[command.id] ? '' : ' hidden'
-            const iconUri = webview.asWebviewUri(vscode.Uri.joinPath(this.context.extensionUri, 'media', this.getQuickCommandIconFileName(command.id)))
-            const title = this.formatMessage(messages.openQuickTerminalTitle, { label: command.label })
-            const ariaLabel = this.formatMessage(messages.openQuickTerminalAria, { label: command.label })
-            return `<button id="launch-${command.id}" class="icon-button quick-command-button${hiddenClass}" type="button" data-quick-command-id="${command.id}" title="${title}" aria-label="${ariaLabel}"><img class="quick-command-icon" src="${iconUri}" alt="" /></button>`
-        }).join('')
+    private normalizeQuickCommand(
+        command: StoredSidebarQuickCommand | undefined,
+        index: number,
+        defaultCommand: SidebarQuickCommand | undefined,
+        usedIds: Set<string>
+    ) {
+        const rawCommand = typeof command?.command === 'string'
+            ? command.command.trim()
+            : defaultCommand?.command ?? ''
+
+        if (!rawCommand) {
+            return undefined
+        }
+
+        const label = this.normalizeQuickCommandLabel(command?.label, rawCommand, defaultCommand?.label, index)
+        const preferredId = typeof command?.id === 'string' && command.id.trim().length > 0
+            ? command.id.trim()
+            : defaultCommand?.id ?? `quick-command-${index + 1}`
+
+        return {
+            id: this.makeUniqueQuickCommandId(preferredId, usedIds),
+            label,
+            command: rawCommand,
+            icon: this.normalizeQuickCommandIcon(command?.icon, defaultCommand?.icon ?? ''),
+            visible: typeof command?.visible === 'boolean'
+                ? command.visible
+                : defaultCommand?.visible ?? true
+        }
     }
 
-    private getWelcomeQuickButtonsHtml(webview: vscode.Webview, messages: UiMessages) {
-        return QUICK_COMMANDS.map(command => {
-            const hiddenClass = this.settings.commandButtons[command.id] ? '' : ' hidden'
-            const iconUri = webview.asWebviewUri(vscode.Uri.joinPath(this.context.extensionUri, 'media', this.getQuickCommandIconFileName(command.id)))
-            const title = this.formatMessage(messages.openQuickTerminalTitle, { label: command.label })
-            const ariaLabel = this.formatMessage(messages.openQuickTerminalAria, { label: command.label })
-
-            return `<button class="secondary-button welcome-quick-button${hiddenClass}" type="button" data-quick-command-id="${command.id}" title="${title}" aria-label="${ariaLabel}"><img class="quick-command-icon welcome-quick-icon" src="${iconUri}" alt="" /><span class="welcome-quick-copy">${command.label}</span></button>`
-        }).join('')
+    private getDefaultQuickCommands(legacyCommandButtons: Record<string, boolean> | undefined): SidebarQuickCommand[] {
+        return DEFAULT_QUICK_COMMANDS.map(command => ({
+            id: command.id,
+            label: command.label,
+            command: command.command,
+            icon: command.icon,
+            visible: legacyCommandButtons?.[command.id] ?? true
+        }))
     }
 
-    private getSettingsRowsHtml() {
-        return QUICK_COMMANDS.map(command => {
-            const checked = this.settings.commandButtons[command.id] ? ' checked' : ''
-            return `<label class="toggle-row" for="toggle-${command.id}"><span class="toggle-copy">${command.label}</span><input id="toggle-${command.id}" class="checkbox-input" type="checkbox" data-toggle-command-id="${command.id}"${checked} /></label>`
-        }).join('')
+    private normalizeQuickCommandLabel(
+        label: string | undefined,
+        command: string,
+        fallbackLabel: string | undefined,
+        index: number
+    ) {
+        const nextLabel = typeof label === 'string' ? label.trim() : ''
+        if (nextLabel) {
+            return nextLabel
+        }
+
+        if (fallbackLabel && fallbackLabel.trim()) {
+            return fallbackLabel.trim()
+        }
+
+        return command || `Command ${index + 1}`
     }
 
-    private getQuickCommandIconFileName(commandId: QuickCommandId) {
-        switch (commandId) {
-            case 'codex':
+    private normalizeQuickCommandIcon(icon: string | undefined, fallbackIcon: string) {
+        if (typeof icon === 'string') {
+            return this.sanitizeQuickCommandIcon(icon)
+        }
+
+        return this.sanitizeQuickCommandIcon(fallbackIcon)
+    }
+
+    private sanitizeQuickCommandIcon(icon: string) {
+        const value = icon.trim()
+
+        if (!value) {
+            return ''
+        }
+
+        if (/^data:image\/[^;]+;base64,/i.test(value)) {
+            return value.replace(/\s+/g, '')
+        }
+
+        if (/^data:image\//i.test(value)) {
+            return value
+        }
+
+        if (/^<svg[\s>]/i.test(value)) {
+            return this.normalizeInlineSvgMarkup(value)
+        }
+
+        return value
+    }
+
+    private normalizeInlineSvgMarkup(svgMarkup: string) {
+        const value = svgMarkup.trim()
+        const openingTagMatch = value.match(/^<svg\b[^>]*>/i)
+
+        if (!openingTagMatch) {
+            return value
+        }
+
+        if (/\sxmlns\s*=\s*['"][^'"]+['"]/i.test(openingTagMatch[0])) {
+            return value
+        }
+
+        return value.replace(/^<svg\b/i, '<svg xmlns="http://www.w3.org/2000/svg"')
+    }
+
+    private makeUniqueQuickCommandId(preferredId: string, usedIds: Set<string>) {
+        let nextId = preferredId
+        let suffix = 2
+
+        while (usedIds.has(nextId)) {
+            nextId = `${preferredId}-${suffix}`
+            suffix += 1
+        }
+
+        usedIds.add(nextId)
+        return nextId
+    }
+
+    private getBuiltinQuickCommandIconUriMap(webview: vscode.Webview) {
+        const icons = new Map<string, string>()
+
+        for (const command of DEFAULT_QUICK_COMMANDS) {
+            icons.set(
+                command.icon,
+                webview.asWebviewUri(
+                    vscode.Uri.joinPath(
+                        this.context.extensionUri,
+                        'media',
+                        this.getQuickCommandIconFileName(command.icon)
+                    )
+                ).toString()
+            )
+        }
+
+        return Object.fromEntries(icons)
+    }
+
+    private getQuickCommandIconFileName(icon: string) {
+        switch (icon) {
+            case 'builtin:codex':
                 return 'codex.svg'
-            case 'claude':
+            case 'builtin:claude':
                 return 'claude.svg'
-            case 'gemini':
+            case 'builtin:gemini':
                 return 'gemini.svg'
-            case 'opencode':
+            case 'builtin:opencode':
                 return 'opencode.ico'
+            default:
+                return 'icon.svg'
         }
     }
 
@@ -799,9 +993,9 @@ export class TerminalSidebarProvider implements vscode.WebviewViewProvider, vsco
         const sidebarStyleUri = webview.asWebviewUri(vscode.Uri.joinPath(this.context.extensionUri, 'media', 'sidebar.css'))
         const webviewConfig = {
             defaultTerminalFontSize: this.getDefaultTerminalFontSize(),
+            builtinQuickCommandIcons: this.getBuiltinQuickCommandIconUriMap(webview),
             language,
             messages,
-            quickCommands: QUICK_COMMANDS.map(({ id, label }) => ({ id, label })),
             settings: this.settings
         }
 
@@ -809,7 +1003,7 @@ export class TerminalSidebarProvider implements vscode.WebviewViewProvider, vsco
 <html lang="${language}">
 <head>
     <meta charset="UTF-8" />
-    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src ${webview.cspSource} data:; style-src ${webview.cspSource} 'unsafe-inline'; script-src ${webview.cspSource} 'nonce-${nonce}';" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src ${webview.cspSource} https: http: data:; style-src ${webview.cspSource} 'unsafe-inline'; script-src ${webview.cspSource} 'nonce-${nonce}';" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>${messages.documentTitle}</title>
     <link rel="stylesheet" href="${xtermStyleUri}" />
@@ -823,64 +1017,84 @@ export class TerminalSidebarProvider implements vscode.WebviewViewProvider, vsco
                 <span id="tab-count" class="pill">${this.formatTabCount(0, messages)}</span>
             </div>
             <div class="toolbar">
-                ${this.getToolbarButtonsHtml(webview, messages)}
+                <div id="toolbar-quick-commands" class="toolbar-quick-commands"></div>
                 <button id="new-session" class="icon-button" type="button" title="${messages.newSessionTitle}" aria-label="${messages.newSessionAria}">${this.getIconMarkup('plus')}</button>
                 <button id="open-settings" class="icon-button" type="button" title="${messages.openSettingsTitle}" aria-label="${messages.openSettingsAria}">${this.getIconMarkup('settings')}</button>
             </div>
         </div>
-        <div id="tabs" class="tabs"></div>
-        <div class="stage">
-            <div id="empty-state" class="empty-state hidden">
-                <div class="empty-card">
-                    <div id="empty-title" class="empty-title">${messages.readyTitle}</div>
-                    <div id="empty-copy" class="empty-copy">${messages.readyCopy}</div>
-                    <div class="empty-actions">
-                        <button id="create-first-session" class="primary-button" type="button">${messages.createTerminal}</button>
-                        <div class="quick-launch-group">
-                            <div id="quick-launch-label" class="quick-launch-label">${messages.quickLaunch}</div>
-                            <div class="quick-launch-grid">
-                                ${this.getWelcomeQuickButtonsHtml(webview, messages)}
+        <div id="terminal-content" class="terminal-content">
+            <div id="tabs" class="tabs"></div>
+            <div class="stage">
+                <div id="empty-state" class="empty-state hidden">
+                    <div class="empty-card">
+                        <div id="empty-title" class="empty-title">${messages.readyTitle}</div>
+                        <div id="empty-copy" class="empty-copy">${messages.readyCopy}</div>
+                        <div class="empty-actions">
+                            <button id="create-first-session" class="primary-button" type="button">${messages.createTerminal}</button>
+                            <div id="quick-launch-group" class="quick-launch-group">
+                                <div id="quick-launch-label" class="quick-launch-label">${messages.quickLaunch}</div>
+                                <div id="quick-launch-buttons" class="quick-launch-grid"></div>
                             </div>
                         </div>
                     </div>
                 </div>
+                <div id="viewport" class="viewport"></div>
             </div>
-            <div id="viewport" class="viewport"></div>
         </div>
-    </div>
-    <div id="settings-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="settings-title">
-        <div class="modal-card">
-            <div class="modal-header">
+        <div id="settings-page" class="settings-page hidden" aria-labelledby="settings-title">
+        <div class="settings-shell">
+            <div class="settings-page-header">
                 <div>
                     <div id="settings-title" class="modal-title">${messages.settingsTitle}</div>
                     <div id="settings-subtitle" class="modal-subtitle">${messages.settingsSubtitle}</div>
                 </div>
                 <button id="settings-close" class="icon-button" type="button" title="${messages.closeSettingsTitle}" aria-label="${messages.closeSettingsAria}">${this.getIconMarkup('close')}</button>
             </div>
-            <div class="modal-body">
-                <label class="field">
-                    <span id="terminal-font-size-label" class="field-label">${messages.terminalFontSize}</span>
-                    <div class="stepper" role="group" aria-labelledby="terminal-font-size-label">
-                        <button id="decrease-font-size" class="stepper-button" type="button" title="${messages.decreaseFontSizeTitle}" aria-label="${messages.decreaseFontSizeAria}"><span aria-hidden="true">−</span></button>
-                        <output id="terminal-font-size-value" class="stepper-value" aria-live="polite">${this.settings.terminalFontSize ?? this.getDefaultTerminalFontSize()}</output>
-                        <button id="increase-font-size" class="stepper-button" type="button" title="${messages.increaseFontSizeTitle}" aria-label="${messages.increaseFontSizeAria}"><span aria-hidden="true">+</span></button>
+            <div class="settings-tabs" role="tablist" aria-label="${messages.settingsTitle}">
+                <button id="settings-tab-appearance" class="settings-tab active" type="button" role="tab" aria-selected="true" aria-controls="settings-panel-appearance" data-settings-tab="appearance">${messages.appearanceSettingsTab}</button>
+                <button id="settings-tab-commands" class="settings-tab" type="button" role="tab" aria-selected="false" aria-controls="settings-panel-commands" data-settings-tab="commands">${messages.commandSettingsTab}</button>
+            </div>
+            <div class="settings-page-body">
+                <div id="settings-panel-appearance" class="settings-panel active" role="tabpanel" aria-labelledby="settings-tab-appearance" data-settings-panel="appearance">
+                    <div class="settings-card">
+                        <label class="field">
+                            <span id="terminal-font-size-label" class="field-label">${messages.terminalFontSize}</span>
+                            <div class="stepper" role="group" aria-labelledby="terminal-font-size-label">
+                                <button id="decrease-font-size" class="stepper-button" type="button" title="${messages.decreaseFontSizeTitle}" aria-label="${messages.decreaseFontSizeAria}"><span aria-hidden="true">−</span></button>
+                                <output id="terminal-font-size-value" class="stepper-value" aria-live="polite">${this.settings.terminalFontSize ?? this.getDefaultTerminalFontSize()}</output>
+                                <button id="increase-font-size" class="stepper-button" type="button" title="${messages.increaseFontSizeTitle}" aria-label="${messages.increaseFontSizeAria}"><span aria-hidden="true">+</span></button>
+                            </div>
+                        </label>
+                        <label class="field" for="interface-language">
+                            <span id="interface-language-label" class="field-label">${messages.interfaceLanguage}</span>
+                            <select id="interface-language" class="select-input">
+                                ${this.getLanguageOptionsHtml(messages)}
+                            </select>
+                        </label>
+                        <div class="field">
+                            <span id="terminal-padding-label" class="field-label">${messages.terminalPadding}</span>
+                            <label class="toggle-row settings-switch-card" for="terminal-padding-enabled">
+                                <span id="terminal-padding-hint" class="toggle-hint">${messages.terminalPaddingHint}</span>
+                                <input id="terminal-padding-enabled" class="checkbox-input" type="checkbox" aria-labelledby="terminal-padding-label" aria-describedby="terminal-padding-hint"${this.settings.terminalPaddingEnabled ? ' checked' : ''} />
+                            </label>
+                        </div>
                     </div>
-                </label>
-                <label class="field" for="interface-language">
-                    <span id="interface-language-label" class="field-label">${messages.interfaceLanguage}</span>
-                    <select id="interface-language" class="select-input">
-                        ${this.getLanguageOptionsHtml(messages)}
-                    </select>
-                </label>
-                <div class="settings-group">
-                    <div id="command-buttons-title" class="settings-group-title">${messages.commandButtons}</div>
-                    ${this.getSettingsRowsHtml()}
+                </div>
+                <div id="settings-panel-commands" class="settings-panel" role="tabpanel" aria-labelledby="settings-tab-commands" data-settings-panel="commands" hidden>
+                    <div class="settings-group settings-card">
+                        <div class="settings-group-header">
+                            <div id="command-buttons-title" class="settings-group-title">${messages.commandButtons}</div>
+                            <button id="add-quick-command" class="secondary-button add-quick-command-button" type="button">${messages.addQuickCommand}</button>
+                        </div>
+                        <div id="quick-command-list" class="quick-command-list"></div>
+                    </div>
                 </div>
             </div>
-            <div class="modal-actions">
+            <div class="settings-page-actions">
                 <button id="settings-cancel" class="secondary-button" type="button">${messages.cancel}</button>
                 <button id="settings-save" class="primary-button" type="button">${messages.save}</button>
             </div>
+        </div>
         </div>
     </div>
     <script nonce="${nonce}">window.__RST_CONFIG__ = ${JSON.stringify(webviewConfig)}</script>
