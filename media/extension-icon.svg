@@ -4,7 +4,7 @@
       <stop offset="0" stop-color="#0F172A"/>
       <stop offset="1" stop-color="#111827"/>
     </linearGradient>
-    <linearGradient id="panel" x1="150" y1="62" x2="198" y2="194" gradientUnits="userSpaceOnUse">
+    <linearGradient id="panel" x1="142" y1="62" x2="196" y2="194" gradientUnits="userSpaceOnUse">
       <stop offset="0" stop-color="#38BDF8"/>
       <stop offset="1" stop-color="#2563EB"/>
     </linearGradient>
@@ -20,8 +20,7 @@
   <circle cx="64" cy="64" r="4" fill="#475569"/>
   <circle cx="78" cy="64" r="4" fill="#334155"/>
   <circle cx="92" cy="64" r="4" fill="#334155"/>
-  <rect x="151" y="62" width="45" height="132" rx="16" fill="url(#panel)"/>
-  <path d="M149 64V192" stroke="#93C5FD" stroke-opacity="0.45" stroke-width="2"/>
+  <rect x="142" y="62" width="54" height="132" rx="16" fill="url(#panel)"/>
   <rect x="64" y="88" width="44" height="10" rx="5" fill="#64748B" opacity="0.75"/>
   <rect x="64" y="110" width="58" height="10" rx="5" fill="#475569" opacity="0.9"/>
   <rect x="64" y="132" width="50" height="10" rx="5" fill="#475569" opacity="0.72"/>
