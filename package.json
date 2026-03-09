@@ -3,7 +3,7 @@
   "displayName": "Right Sidebar Terminal",
   "description": "Embedded command-line terminal in the secondary sidebar",
   "icon": "media/extension-icon.png",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "repository": {
     "type": "git",
     "url": "https://gitee.com/wagio_admin/vscode-right-sidebar-terminal"
