@@ -1,4 +1,6 @@
-﻿# Right Sidebar Terminal
+﻿## Right Sidebar Terminal
+
+ :rose: 已上架vscode商店，搜索 `Right Sidebar Terminal` 即可
 
 一个把**可交互命令行**直接放进 VS Code 辅助侧边栏的扩展。
 
