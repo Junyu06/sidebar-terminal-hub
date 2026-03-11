@@ -1,6 +1,6 @@
-## 辅助栏命令行管理工具
+ :rose::rose::rose:  _已上架vscode商店，搜索 `Right Sidebar Terminal` 即可_ 
 
- :rose: 已上架vscode商店，搜索 `Right Sidebar Terminal` 即可
+## 辅助栏命令行管理工具
 
 一个把**可交互命令行**直接放进 VS Code 辅助侧边栏的扩展。
 
