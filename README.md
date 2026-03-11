@@ -1,4 +1,4 @@
-﻿## Right Sidebar Terminal
+## 辅助栏命令行管理工具
 
  :rose: 已上架vscode商店，搜索 `Right Sidebar Terminal` 即可
 
