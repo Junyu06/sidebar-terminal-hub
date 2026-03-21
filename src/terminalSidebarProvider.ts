@@ -80,8 +80,8 @@ interface UiMessages {
     interfaceLanguage: string
     terminalPadding: string
     terminalPaddingHint: string
-    hideTerminalScrollbar: string
-    hideTerminalScrollbarHint: string
+    showTerminalScrollbar: string
+    showTerminalScrollbarHint: string
     followSystem: string
     languageChinese: string
     languageEnglish: string
@@ -138,8 +138,8 @@ const UI_MESSAGES: Record<ResolvedLanguage, UiMessages> = {
         interfaceLanguage: 'Interface language',
         terminalPadding: 'Terminal padding',
         terminalPaddingHint: 'Enable 8px 6px 8px 8px padding around the terminal content. If CLI windows such as Claude Code, OpenCode, or Gemini render incorrectly, slightly adjust the sidebar width and the layout will automatically recover.',
-        hideTerminalScrollbar: 'Hide terminal scrollbar',
-        hideTerminalScrollbarHint: 'Hide the terminal viewport scrollbar. Mouse wheel, touchpad, and keyboard scrolling still work.',
+        showTerminalScrollbar: 'Show terminal scrollbar',
+        showTerminalScrollbarHint: 'Show the terminal viewport scrollbar.',
         followSystem: 'Follow system',
         languageChinese: '中文',
         languageEnglish: 'English',
@@ -191,8 +191,8 @@ const UI_MESSAGES: Record<ResolvedLanguage, UiMessages> = {
         interfaceLanguage: '界面语言（Interface language）',
         terminalPadding: '终端内边距',
         terminalPaddingHint: '启用后在终端四周使用 8px 6px 8px 8px 的内边距，若 Claude Code、OpenCode、Gemini 等 CLI 窗口内容出现显示混乱时，可以稍微调整侧栏宽度，调整后内容会自动修复。',
-        hideTerminalScrollbar: '隐藏命令窗口滚动条',
-        hideTerminalScrollbarHint: '隐藏终端视口滚动条；鼠标滚轮、触控板和键盘滚动仍然可用。',
+        showTerminalScrollbar: '显示命令窗口滚动条',
+        showTerminalScrollbarHint: '显示终端视口滚动条。',
         followSystem: '跟随系统',
         languageChinese: '中文',
         languageEnglish: 'English',
@@ -239,7 +239,7 @@ interface SidebarSettings {
     terminalFontSize?: number
     languagePreference: LanguagePreference
     terminalPaddingEnabled: boolean
-    hideTerminalScrollbar: boolean
+    showTerminalScrollbar: boolean
     quickCommands: SidebarQuickCommand[]
 }
 
@@ -247,6 +247,7 @@ interface StoredSidebarSettings {
     terminalFontSize?: number
     languagePreference?: LanguagePreference
     terminalPaddingEnabled?: boolean
+    showTerminalScrollbar?: boolean
     hideTerminalScrollbar?: boolean
     quickCommands?: StoredSidebarQuickCommand[]
     commandButtons?: Record<string, boolean>
@@ -811,7 +812,10 @@ export class TerminalSidebarProvider implements vscode.WebviewViewProvider, vsco
             terminalFontSize: this.normalizeFontSize(settings?.terminalFontSize),
             languagePreference: this.normalizeLanguagePreference(settings?.languagePreference),
             terminalPaddingEnabled: this.normalizeTerminalPaddingEnabled(settings?.terminalPaddingEnabled),
-            hideTerminalScrollbar: this.normalizeHideTerminalScrollbar(settings?.hideTerminalScrollbar),
+            showTerminalScrollbar: this.normalizeShowTerminalScrollbar(
+                settings?.showTerminalScrollbar,
+                settings?.hideTerminalScrollbar
+            ),
             quickCommands: this.normalizeQuickCommands(settings?.quickCommands, settings?.commandButtons)
         }
     }
@@ -820,8 +824,19 @@ export class TerminalSidebarProvider implements vscode.WebviewViewProvider, vsco
         return value === true
     }
 
-    private normalizeHideTerminalScrollbar(value: boolean | undefined) {
-        return value !== false
+    private normalizeShowTerminalScrollbar(
+        showTerminalScrollbar: boolean | undefined,
+        hideTerminalScrollbar: boolean | undefined
+    ) {
+        if (showTerminalScrollbar !== undefined) {
+            return showTerminalScrollbar === true
+        }
+
+        if (hideTerminalScrollbar !== undefined) {
+            return hideTerminalScrollbar !== true
+        }
+
+        return true
     }
 
     private normalizeFontSize(fontSize: number | undefined) {
@@ -1151,10 +1166,10 @@ export class TerminalSidebarProvider implements vscode.WebviewViewProvider, vsco
                             </label>
                         </div>
                         <div class="field">
-                            <span id="hide-terminal-scrollbar-label" class="field-label">${messages.hideTerminalScrollbar}</span>
-                            <label class="toggle-row settings-switch-card" for="hide-terminal-scrollbar-enabled">
-                                <span id="hide-terminal-scrollbar-hint" class="toggle-hint">${messages.hideTerminalScrollbarHint}</span>
-                                <input id="hide-terminal-scrollbar-enabled" class="checkbox-input" type="checkbox" aria-labelledby="hide-terminal-scrollbar-label" aria-describedby="hide-terminal-scrollbar-hint"${this.settings.hideTerminalScrollbar ? ' checked' : ''} />
+                            <span id="show-terminal-scrollbar-label" class="field-label">${messages.showTerminalScrollbar}</span>
+                            <label class="toggle-row settings-switch-card" for="show-terminal-scrollbar-enabled">
+                                <span id="show-terminal-scrollbar-hint" class="toggle-hint">${messages.showTerminalScrollbarHint}</span>
+                                <input id="show-terminal-scrollbar-enabled" class="checkbox-input" type="checkbox" aria-labelledby="show-terminal-scrollbar-label" aria-describedby="show-terminal-scrollbar-hint"${this.settings.showTerminalScrollbar ? ' checked' : ''} />
                             </label>
                         </div>
                     </div>

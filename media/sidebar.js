@@ -2,6 +2,9 @@
     const FONT_SIZE_MIN = 10
     const FONT_SIZE_MAX = 32
     const FIT_SETTLE_DELAYS = [0, 48, 160]
+    const MINIMUM_TERMINAL_COLS = 2
+    const MINIMUM_TERMINAL_ROWS = 1
+    const FALLBACK_SCROLLBAR_GUTTER_PX = 14
 
     const vscode = acquireVsCodeApi()
     const config = window.__RST_CONFIG__ || {}
@@ -35,8 +38,8 @@
         interfaceLanguage: 'Interface language (界面语言)',
         terminalPadding: 'Terminal padding',
         terminalPaddingHint: 'Enable 8px 6px 8px 8px padding around the terminal content. If CLI windows such as Claude Code, OpenCode, or Gemini render incorrectly, slightly adjust the sidebar width and the layout will automatically recover.',
-        hideTerminalScrollbar: 'Hide terminal scrollbar',
-        hideTerminalScrollbarHint: 'Hide the terminal viewport scrollbar. Mouse wheel, touchpad, and keyboard scrolling still work.',
+        showTerminalScrollbar: 'Show terminal scrollbar',
+        showTerminalScrollbarHint: 'Show the terminal viewport scrollbar.',
         followSystem: 'Follow system',
         languageChinese: '中文',
         languageEnglish: 'English',
@@ -98,9 +101,9 @@
     const terminalPaddingLabelElement = document.getElementById('terminal-padding-label')
     const terminalPaddingHintElement = document.getElementById('terminal-padding-hint')
     const terminalPaddingCheckbox = document.getElementById('terminal-padding-enabled')
-    const terminalScrollbarLabelElement = document.getElementById('hide-terminal-scrollbar-label')
-    const terminalScrollbarHintElement = document.getElementById('hide-terminal-scrollbar-hint')
-    const terminalScrollbarCheckbox = document.getElementById('hide-terminal-scrollbar-enabled')
+    const terminalScrollbarLabelElement = document.getElementById('show-terminal-scrollbar-label')
+    const terminalScrollbarHintElement = document.getElementById('show-terminal-scrollbar-hint')
+    const terminalScrollbarCheckbox = document.getElementById('show-terminal-scrollbar-enabled')
     const commandButtonsTitleElement = document.getElementById('command-buttons-title')
     const addQuickCommandButton = document.getElementById('add-quick-command')
     const quickCommandListElement = document.getElementById('quick-command-list')
@@ -119,6 +122,7 @@
     let isSettingsPageOpen = false
     let nextDraftQuickCommandNumber = 1
     let fitSequence = 0
+    let measuredScrollbarWidth
 
     const resizeObserver = new ResizeObserver(() => {
         scheduleFitActiveSession({
@@ -199,9 +203,24 @@
             terminalFontSize: clampFontSize(value && value.terminalFontSize),
             languagePreference: normalizeLanguagePreference(value && value.languagePreference),
             terminalPaddingEnabled: value && value.terminalPaddingEnabled === true,
-            hideTerminalScrollbar: !(value && value.hideTerminalScrollbar === false),
+            showTerminalScrollbar: normalizeShowTerminalScrollbar(
+                value && value.showTerminalScrollbar,
+                value && value.hideTerminalScrollbar
+            ),
             quickCommands: normalizeQuickCommands(value && value.quickCommands)
         }
+    }
+
+    function normalizeShowTerminalScrollbar(showTerminalScrollbar, hideTerminalScrollbar) {
+        if (showTerminalScrollbar !== undefined) {
+            return showTerminalScrollbar === true
+        }
+
+        if (hideTerminalScrollbar !== undefined) {
+            return hideTerminalScrollbar !== true
+        }
+
+        return true
     }
 
     function normalizeMessages(value) {
@@ -442,27 +461,101 @@
         return rect.width > 0 && rect.height > 0
     }
 
+    function measureScrollbarWidth() {
+        if (measuredScrollbarWidth !== undefined) {
+            return measuredScrollbarWidth
+        }
+
+        const probe = document.createElement('div')
+        probe.style.position = 'absolute'
+        probe.style.top = '-9999px'
+        probe.style.left = '-9999px'
+        probe.style.width = '100px'
+        probe.style.height = '100px'
+        probe.style.overflow = 'scroll'
+        probe.style.pointerEvents = 'none'
+        document.body.appendChild(probe)
+        measuredScrollbarWidth = Math.max(0, probe.offsetWidth - probe.clientWidth)
+        probe.remove()
+
+        if (measuredScrollbarWidth === 0) {
+            measuredScrollbarWidth = FALLBACK_SCROLLBAR_GUTTER_PX
+        }
+
+        return measuredScrollbarWidth
+    }
+
+    function getTerminalScrollbarGutter(model) {
+        if (!currentSettings.showTerminalScrollbar) {
+            return 0
+        }
+
+        const core = model && model.terminal && model.terminal._core
+        const viewport = core && core.viewport
+        const scrollBarWidth = viewport && Number.isFinite(viewport.scrollBarWidth)
+            ? viewport.scrollBarWidth
+            : undefined
+
+        if (typeof scrollBarWidth === 'number' && scrollBarWidth > 0) {
+            return scrollBarWidth
+        }
+
+        return measureScrollbarWidth()
+    }
+
+    function updateTerminalScrollbarGutter(model) {
+        const activeModel = model || activeSessionId && sessionModels.get(activeSessionId)
+        const gutter = getTerminalScrollbarGutter(activeModel)
+        document.documentElement.style.setProperty('--rst-terminal-scrollbar-gutter', `${gutter}px`)
+    }
+
     function getProposedTerminalSize(model) {
-        if (!model) {
+        if (!model || !model.terminal || !model.terminal.element || !model.terminal.element.parentElement) {
             return undefined
         }
 
-        const fitAddon = model.fitAddon
-        if (fitAddon && typeof fitAddon.proposeDimensions === 'function') {
-            const proposed = fitAddon.proposeDimensions()
-            if (proposed && Number.isFinite(proposed.cols) && Number.isFinite(proposed.rows)) {
-                return proposed
-            }
+        const core = model.terminal._core
+        const dimensions = core && core._renderService && core._renderService.dimensions
+        if (!dimensions || dimensions.css.cell.width === 0 || dimensions.css.cell.height === 0) {
+            return undefined
         }
 
-        if (model.terminal.cols > 0 && model.terminal.rows > 0) {
-            return {
-                cols: model.terminal.cols,
-                rows: model.terminal.rows
-            }
+        const parentStyle = window.getComputedStyle(model.terminal.element.parentElement)
+        const parentHeight = parseInt(parentStyle.getPropertyValue('height'))
+        const parentWidth = Math.max(0, parseInt(parentStyle.getPropertyValue('width')))
+        const elementStyle = window.getComputedStyle(model.terminal.element)
+        const paddingVertical = parseInt(elementStyle.getPropertyValue('padding-top'))
+            + parseInt(elementStyle.getPropertyValue('padding-bottom'))
+        const paddingHorizontal = parseInt(elementStyle.getPropertyValue('padding-left'))
+            + parseInt(elementStyle.getPropertyValue('padding-right'))
+        const availableHeight = parentHeight - paddingVertical
+        const availableWidth = parentWidth - paddingHorizontal - getTerminalScrollbarGutter(model)
+
+        if (!Number.isFinite(availableHeight) || !Number.isFinite(availableWidth)) {
+            return undefined
         }
 
-        return undefined
+        return {
+            cols: Math.max(MINIMUM_TERMINAL_COLS, Math.floor(availableWidth / dimensions.css.cell.width)),
+            rows: Math.max(MINIMUM_TERMINAL_ROWS, Math.floor(availableHeight / dimensions.css.cell.height))
+        }
+    }
+
+    function fitTerminal(model) {
+        const size = getProposedTerminalSize(model)
+        if (!size) {
+            return undefined
+        }
+
+        if (model.terminal.cols !== size.cols || model.terminal.rows !== size.rows) {
+            const core = model.terminal._core
+            if (core && core._renderService && typeof core._renderService.clear === 'function') {
+                core._renderService.clear()
+            }
+            model.terminal.resize(size.cols, size.rows)
+        }
+
+        return size
     }
 
     function reportTerminalSize(model, forceReport) {
@@ -515,9 +608,8 @@
             theme: getTheme()
         })
 
-        const fitAddon = new window.FitAddon.FitAddon()
-        terminal.loadAddon(fitAddon)
         terminal.open(host)
+        updateTerminalScrollbarGutter()
 
         let webglAddon
         if (window.WebglAddon) {
@@ -578,7 +670,6 @@
             sessionId: session.id,
             host,
             terminal,
-            fitAddon,
             webglAddon,
             renderedLength: session.buffer.length,
             status: session.status,
@@ -636,9 +727,10 @@
             return
         }
 
-        try {
-            model.fitAddon.fit()
-        } catch (_) {
+        updateTerminalScrollbarGutter(model)
+
+        const size = fitTerminal(model)
+        if (!size) {
             return
         }
 
@@ -957,7 +1049,8 @@
             '--rst-terminal-padding',
             currentSettings.terminalPaddingEnabled ? '8px 6px 8px 8px' : '0px'
         )
-        document.documentElement.classList.toggle('hide-terminal-scrollbar', currentSettings.hideTerminalScrollbar)
+        document.documentElement.classList.toggle('hide-terminal-scrollbar', !currentSettings.showTerminalScrollbar)
+        updateTerminalScrollbarGutter()
 
         renderQuickCommandButtons()
 
@@ -1038,11 +1131,11 @@
         }
 
         if (terminalScrollbarLabelElement) {
-            terminalScrollbarLabelElement.textContent = messages.hideTerminalScrollbar
+            terminalScrollbarLabelElement.textContent = messages.showTerminalScrollbar
         }
 
         if (terminalScrollbarHintElement) {
-            terminalScrollbarHintElement.textContent = messages.hideTerminalScrollbarHint
+            terminalScrollbarHintElement.textContent = messages.showTerminalScrollbarHint
         }
 
         if (interfaceLanguageSelect) {
@@ -1280,7 +1373,7 @@
         }
 
         if (terminalScrollbarCheckbox) {
-            terminalScrollbarCheckbox.checked = currentSettings.hideTerminalScrollbar
+            terminalScrollbarCheckbox.checked = currentSettings.showTerminalScrollbar
         }
 
         renderQuickCommandEditors(getQuickCommands())
@@ -1371,7 +1464,7 @@
             terminalFontSize: draftTerminalFontSize,
             languagePreference: normalizeLanguagePreference(interfaceLanguageSelect && interfaceLanguageSelect.value),
             terminalPaddingEnabled: terminalPaddingCheckbox ? terminalPaddingCheckbox.checked : false,
-            hideTerminalScrollbar: terminalScrollbarCheckbox ? terminalScrollbarCheckbox.checked : true,
+            showTerminalScrollbar: terminalScrollbarCheckbox ? terminalScrollbarCheckbox.checked : true,
             quickCommands
         }
 
