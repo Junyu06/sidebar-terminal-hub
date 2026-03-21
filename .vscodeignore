@@ -21,3 +21,5 @@ tsconfig.json
 package-lock.json
 image.png
 .gitignore
+CLAUDE.md
+AGENTS.md

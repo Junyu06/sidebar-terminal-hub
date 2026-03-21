@@ -2,6 +2,9 @@ import * as vscode from 'vscode'
 
 declare function require(moduleName: string): any
 
+declare function setTimeout(callback: () => void, ms: number): number
+declare function clearTimeout(id: number): void
+
 declare const process: {
     platform: string
     arch: string
@@ -19,6 +22,8 @@ export const CLOSE_ACTIVE_SESSION_COMMAND = 'terminalSidebar.closeActiveSession'
 
 const MAX_BUFFER_LENGTH = 200_000
 const SETTINGS_KEY = 'terminalSidebar.settings'
+const LIVE_OUTPUT_FLUSH_DELAY_MS = 8
+const IMMEDIATE_FLUSH_SEQUENCE_PATTERN = /\u001b\[\?(?:47|1047|1048|1049)[hl]|\u001b\[2J|\u001bc/
 
 const DEFAULT_QUICK_COMMANDS = [
     { id: 'codex', label: 'Codex', command: 'codex', icon: 'builtin:codex' },
@@ -75,6 +80,8 @@ interface UiMessages {
     interfaceLanguage: string
     terminalPadding: string
     terminalPaddingHint: string
+    hideTerminalScrollbar: string
+    hideTerminalScrollbarHint: string
     followSystem: string
     languageChinese: string
     languageEnglish: string
@@ -131,6 +138,8 @@ const UI_MESSAGES: Record<ResolvedLanguage, UiMessages> = {
         interfaceLanguage: 'Interface language',
         terminalPadding: 'Terminal padding',
         terminalPaddingHint: 'Enable 8px 6px 8px 8px padding around the terminal content. If CLI windows such as Claude Code, OpenCode, or Gemini render incorrectly, slightly adjust the sidebar width and the layout will automatically recover.',
+        hideTerminalScrollbar: 'Hide terminal scrollbar',
+        hideTerminalScrollbarHint: 'Hide the terminal viewport scrollbar. Mouse wheel, touchpad, and keyboard scrolling still work.',
         followSystem: 'Follow system',
         languageChinese: '中文',
         languageEnglish: 'English',
@@ -182,6 +191,8 @@ const UI_MESSAGES: Record<ResolvedLanguage, UiMessages> = {
         interfaceLanguage: '界面语言（Interface language）',
         terminalPadding: '终端内边距',
         terminalPaddingHint: '启用后在终端四周使用 8px 6px 8px 8px 的内边距，若 Claude Code、OpenCode、Gemini 等 CLI 窗口内容出现显示混乱时，可以稍微调整侧栏宽度，调整后内容会自动修复。',
+        hideTerminalScrollbar: '隐藏命令窗口滚动条',
+        hideTerminalScrollbarHint: '隐藏终端视口滚动条；鼠标滚轮、触控板和键盘滚动仍然可用。',
         followSystem: '跟随系统',
         languageChinese: '中文',
         languageEnglish: 'English',
@@ -218,12 +229,17 @@ interface SidebarSession {
     buffer: string
     cols: number
     rows: number
+    pendingData: string
+    flushTimer: any
+    pendingInitialCommand?: string
+    hasReportedSize: boolean
 }
 
 interface SidebarSettings {
     terminalFontSize?: number
     languagePreference: LanguagePreference
     terminalPaddingEnabled: boolean
+    hideTerminalScrollbar: boolean
     quickCommands: SidebarQuickCommand[]
 }
 
@@ -231,6 +247,7 @@ interface StoredSidebarSettings {
     terminalFontSize?: number
     languagePreference?: LanguagePreference
     terminalPaddingEnabled?: boolean
+    hideTerminalScrollbar?: boolean
     quickCommands?: StoredSidebarQuickCommand[]
     commandButtons?: Record<string, boolean>
 }
@@ -269,6 +286,9 @@ export class TerminalSidebarProvider implements vscode.WebviewViewProvider, vsco
 
     dispose() {
         for (const session of this.sessions.values()) {
+            if (session.flushTimer !== undefined) {
+                clearTimeout(session.flushTimer)
+            }
             try {
                 session.ptyProcess.kill()
             } catch {
@@ -356,7 +376,8 @@ export class TerminalSidebarProvider implements vscode.WebviewViewProvider, vsco
             localResourceRoots: [
                 this.context.extensionUri,
                 vscode.Uri.joinPath(this.context.extensionUri, 'node_modules', 'xterm'),
-                vscode.Uri.joinPath(this.context.extensionUri, 'node_modules', 'xterm-addon-fit')
+                vscode.Uri.joinPath(this.context.extensionUri, 'node_modules', 'xterm-addon-fit'),
+                vscode.Uri.joinPath(this.context.extensionUri, 'node_modules', 'xterm-addon-webgl')
             ]
         }
 
@@ -396,11 +417,14 @@ export class TerminalSidebarProvider implements vscode.WebviewViewProvider, vsco
 
                 session.cols = message.cols
                 session.rows = message.rows
+                session.hasReportedSize = true
 
                 try {
                     session.ptyProcess.resize(message.cols, message.rows)
                 } catch {
                 }
+
+                this.runPendingInitialCommand(session)
                 return
             }
             case 'close-session':
@@ -484,6 +508,10 @@ export class TerminalSidebarProvider implements vscode.WebviewViewProvider, vsco
             buffer: '',
             cols,
             rows,
+            pendingData: '',
+            flushTimer: undefined,
+            pendingInitialCommand: options.initialCommand,
+            hasReportedSize: false,
             ptyProcess: pty.spawn(shellSpec.path, shellSpec.args, {
                 name: 'xterm-256color',
                 cwd,
@@ -499,13 +527,16 @@ export class TerminalSidebarProvider implements vscode.WebviewViewProvider, vsco
 
         session.ptyProcess.onData((data: string) => {
             session.buffer = this.appendToBuffer(session.buffer, data)
-            this.postMessage({
-                type: 'session-data',
-                payload: {
-                    sessionId: session.id,
-                    data
-                }
-            })
+            session.pendingData += data
+            if (this.shouldFlushSessionDataImmediately(data)) {
+                this.flushSessionData(session)
+                return
+            }
+            if (session.flushTimer === undefined) {
+                session.flushTimer = setTimeout(() => {
+                    this.flushSessionData(session)
+                }, LIVE_OUTPUT_FLUSH_DELAY_MS)
+            }
         })
 
         session.ptyProcess.onExit((event: { exitCode: number }) => {
@@ -514,6 +545,7 @@ export class TerminalSidebarProvider implements vscode.WebviewViewProvider, vsco
                 return
             }
 
+            this.flushSessionData(existing)
             existing.status = 'exited'
             existing.exitCode = event.exitCode
             this.postMessage({
@@ -532,13 +564,6 @@ export class TerminalSidebarProvider implements vscode.WebviewViewProvider, vsco
             this.activeSessionId = id
         }
 
-        if (options.initialCommand) {
-            try {
-                session.ptyProcess.write(`${options.initialCommand}\r`)
-            } catch {
-            }
-        }
-
         this.postHydrate()
     }
 
@@ -548,6 +573,7 @@ export class TerminalSidebarProvider implements vscode.WebviewViewProvider, vsco
             return
         }
 
+        this.flushSessionData(session)
         this.sessions.delete(sessionId)
 
         try {
@@ -560,6 +586,46 @@ export class TerminalSidebarProvider implements vscode.WebviewViewProvider, vsco
         }
 
         this.postHydrate()
+    }
+
+    private flushSessionData(session: SidebarSession) {
+        if (session.flushTimer !== undefined) {
+            clearTimeout(session.flushTimer)
+            session.flushTimer = undefined
+        }
+
+        if (!session.pendingData) {
+            return
+        }
+
+        const data = session.pendingData
+        session.pendingData = ''
+        this.postMessage({
+            type: 'session-data',
+            payload: {
+                sessionId: session.id,
+                data
+            }
+        })
+    }
+
+    private shouldFlushSessionDataImmediately(data: string) {
+        return IMMEDIATE_FLUSH_SEQUENCE_PATTERN.test(data)
+    }
+
+    private runPendingInitialCommand(session: SidebarSession) {
+        if (!session.pendingInitialCommand || !session.hasReportedSize) {
+            return
+        }
+
+        const command = session.pendingInitialCommand
+        session.pendingInitialCommand = undefined
+
+        try {
+            session.ptyProcess.write(`${command}\r`)
+        } catch {
+            session.pendingInitialCommand = command
+        }
     }
 
     private postHydrate() {
@@ -745,12 +811,17 @@ export class TerminalSidebarProvider implements vscode.WebviewViewProvider, vsco
             terminalFontSize: this.normalizeFontSize(settings?.terminalFontSize),
             languagePreference: this.normalizeLanguagePreference(settings?.languagePreference),
             terminalPaddingEnabled: this.normalizeTerminalPaddingEnabled(settings?.terminalPaddingEnabled),
+            hideTerminalScrollbar: this.normalizeHideTerminalScrollbar(settings?.hideTerminalScrollbar),
             quickCommands: this.normalizeQuickCommands(settings?.quickCommands, settings?.commandButtons)
         }
     }
 
     private normalizeTerminalPaddingEnabled(value: boolean | undefined) {
         return value === true
+    }
+
+    private normalizeHideTerminalScrollbar(value: boolean | undefined) {
+        return value !== false
     }
 
     private normalizeFontSize(fontSize: number | undefined) {
@@ -988,6 +1059,7 @@ export class TerminalSidebarProvider implements vscode.WebviewViewProvider, vsco
         const messages = this.getUiMessages(language)
         const xtermScriptUri = webview.asWebviewUri(vscode.Uri.joinPath(this.context.extensionUri, 'node_modules', 'xterm', 'lib', 'xterm.js'))
         const fitScriptUri = webview.asWebviewUri(vscode.Uri.joinPath(this.context.extensionUri, 'node_modules', 'xterm-addon-fit', 'lib', 'xterm-addon-fit.js'))
+        const webglScriptUri = webview.asWebviewUri(vscode.Uri.joinPath(this.context.extensionUri, 'node_modules', 'xterm-addon-webgl', 'lib', 'xterm-addon-webgl.js'))
         const xtermStyleUri = webview.asWebviewUri(vscode.Uri.joinPath(this.context.extensionUri, 'node_modules', 'xterm', 'css', 'xterm.css'))
         const sidebarScriptUri = webview.asWebviewUri(vscode.Uri.joinPath(this.context.extensionUri, 'media', 'sidebar.js'))
         const sidebarStyleUri = webview.asWebviewUri(vscode.Uri.joinPath(this.context.extensionUri, 'media', 'sidebar.css'))
@@ -1078,6 +1150,13 @@ export class TerminalSidebarProvider implements vscode.WebviewViewProvider, vsco
                                 <input id="terminal-padding-enabled" class="checkbox-input" type="checkbox" aria-labelledby="terminal-padding-label" aria-describedby="terminal-padding-hint"${this.settings.terminalPaddingEnabled ? ' checked' : ''} />
                             </label>
                         </div>
+                        <div class="field">
+                            <span id="hide-terminal-scrollbar-label" class="field-label">${messages.hideTerminalScrollbar}</span>
+                            <label class="toggle-row settings-switch-card" for="hide-terminal-scrollbar-enabled">
+                                <span id="hide-terminal-scrollbar-hint" class="toggle-hint">${messages.hideTerminalScrollbarHint}</span>
+                                <input id="hide-terminal-scrollbar-enabled" class="checkbox-input" type="checkbox" aria-labelledby="hide-terminal-scrollbar-label" aria-describedby="hide-terminal-scrollbar-hint"${this.settings.hideTerminalScrollbar ? ' checked' : ''} />
+                            </label>
+                        </div>
                     </div>
                 </div>
                 <div id="settings-panel-commands" class="settings-panel" role="tabpanel" aria-labelledby="settings-tab-commands" data-settings-panel="commands" hidden>
@@ -1100,6 +1179,7 @@ export class TerminalSidebarProvider implements vscode.WebviewViewProvider, vsco
     <script nonce="${nonce}">window.__RST_CONFIG__ = ${JSON.stringify(webviewConfig)}</script>
     <script nonce="${nonce}" src="${xtermScriptUri}"></script>
     <script nonce="${nonce}" src="${fitScriptUri}"></script>
+    <script nonce="${nonce}" src="${webglScriptUri}"></script>
     <script nonce="${nonce}" src="${sidebarScriptUri}"></script>
 </body>
 </html>`

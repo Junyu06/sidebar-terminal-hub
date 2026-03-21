@@ -1,6 +1,7 @@
 (function () {
     const FONT_SIZE_MIN = 10
     const FONT_SIZE_MAX = 32
+    const FIT_SETTLE_DELAYS = [0, 48, 160]
 
     const vscode = acquireVsCodeApi()
     const config = window.__RST_CONFIG__ || {}
@@ -34,6 +35,8 @@
         interfaceLanguage: 'Interface language (界面语言)',
         terminalPadding: 'Terminal padding',
         terminalPaddingHint: 'Enable 8px 6px 8px 8px padding around the terminal content. If CLI windows such as Claude Code, OpenCode, or Gemini render incorrectly, slightly adjust the sidebar width and the layout will automatically recover.',
+        hideTerminalScrollbar: 'Hide terminal scrollbar',
+        hideTerminalScrollbarHint: 'Hide the terminal viewport scrollbar. Mouse wheel, touchpad, and keyboard scrolling still work.',
         followSystem: 'Follow system',
         languageChinese: '中文',
         languageEnglish: 'English',
@@ -95,11 +98,17 @@
     const terminalPaddingLabelElement = document.getElementById('terminal-padding-label')
     const terminalPaddingHintElement = document.getElementById('terminal-padding-hint')
     const terminalPaddingCheckbox = document.getElementById('terminal-padding-enabled')
+    const terminalScrollbarLabelElement = document.getElementById('hide-terminal-scrollbar-label')
+    const terminalScrollbarHintElement = document.getElementById('hide-terminal-scrollbar-hint')
+    const terminalScrollbarCheckbox = document.getElementById('hide-terminal-scrollbar-enabled')
     const commandButtonsTitleElement = document.getElementById('command-buttons-title')
     const addQuickCommandButton = document.getElementById('add-quick-command')
     const quickCommandListElement = document.getElementById('quick-command-list')
 
     const sessionModels = new Map()
+    const pendingWrites = new Map()
+    const scheduledFitTimers = new Set()
+    let writeFlushScheduled = false
     let orderedSessions = []
     let activeSessionId = undefined
     let currentLanguage = config.language === 'zh-CN' ? 'zh-CN' : 'en'
@@ -109,9 +118,13 @@
     let activeSettingsTab = 'appearance'
     let isSettingsPageOpen = false
     let nextDraftQuickCommandNumber = 1
+    let fitSequence = 0
 
     const resizeObserver = new ResizeObserver(() => {
-        fitActiveSession()
+        scheduleFitActiveSession({
+            forceReport: true,
+            refreshRenderer: true
+        })
     })
 
     resizeObserver.observe(viewportElement)
@@ -186,6 +199,7 @@
             terminalFontSize: clampFontSize(value && value.terminalFontSize),
             languagePreference: normalizeLanguagePreference(value && value.languagePreference),
             terminalPaddingEnabled: value && value.terminalPaddingEnabled === true,
+            hideTerminalScrollbar: !(value && value.hideTerminalScrollbar === false),
             quickCommands: normalizeQuickCommands(value && value.quickCommands)
         }
     }
@@ -391,6 +405,100 @@
         return hasPrimaryModifier && !event.altKey && key === 'c'
     }
 
+    function clearScheduledFits() {
+        for (const timerId of scheduledFitTimers) {
+            clearTimeout(timerId)
+        }
+        scheduledFitTimers.clear()
+    }
+
+    function scheduleFitActiveSession(options) {
+        clearScheduledFits()
+        fitSequence += 1
+        const sequence = fitSequence
+
+        for (const delay of FIT_SETTLE_DELAYS) {
+            const timerId = setTimeout(() => {
+                scheduledFitTimers.delete(timerId)
+                requestAnimationFrame(() => {
+                    if (sequence !== fitSequence) {
+                        return
+                    }
+
+                    fitActiveSession(options)
+                })
+            }, delay)
+
+            scheduledFitTimers.add(timerId)
+        }
+    }
+
+    function isVisibleSize(element) {
+        if (!element) {
+            return false
+        }
+
+        const rect = element.getBoundingClientRect()
+        return rect.width > 0 && rect.height > 0
+    }
+
+    function getProposedTerminalSize(model) {
+        if (!model) {
+            return undefined
+        }
+
+        const fitAddon = model.fitAddon
+        if (fitAddon && typeof fitAddon.proposeDimensions === 'function') {
+            const proposed = fitAddon.proposeDimensions()
+            if (proposed && Number.isFinite(proposed.cols) && Number.isFinite(proposed.rows)) {
+                return proposed
+            }
+        }
+
+        if (model.terminal.cols > 0 && model.terminal.rows > 0) {
+            return {
+                cols: model.terminal.cols,
+                rows: model.terminal.rows
+            }
+        }
+
+        return undefined
+    }
+
+    function reportTerminalSize(model, forceReport) {
+        const size = getProposedTerminalSize(model)
+        if (!size) {
+            return
+        }
+
+        if (!forceReport && model.lastReportedCols === size.cols && model.lastReportedRows === size.rows) {
+            return
+        }
+
+        model.lastReportedCols = size.cols
+        model.lastReportedRows = size.rows
+        postMessage('resize', {
+            sessionId: model.sessionId,
+            cols: size.cols,
+            rows: size.rows
+        })
+    }
+
+    function refreshTerminalViewport(model, refreshRenderer) {
+        if (!model || model.terminal.rows <= 0) {
+            return
+        }
+
+        if (refreshRenderer && model.webglAddon && typeof model.webglAddon.clearTextureAtlas === 'function') {
+            try {
+                model.webglAddon.clearTextureAtlas()
+            } catch (_) {
+            }
+        }
+
+        model.terminal.refresh(0, model.terminal.rows - 1)
+    }
+
     function createSessionModel(session) {
         const host = document.createElement('div')
         host.className = 'terminal-host hidden'
@@ -403,13 +511,26 @@
             allowTransparency: true,
             fontFamily: getFontFamily(),
             fontSize: getTerminalFontSize(),
-            scrollback: 5000,
+            scrollback: 10000,
             theme: getTheme()
         })
 
         const fitAddon = new window.FitAddon.FitAddon()
         terminal.loadAddon(fitAddon)
         terminal.open(host)
+
+        let webglAddon
+        if (window.WebglAddon) {
+            try {
+                webglAddon = new window.WebglAddon.WebglAddon()
+                webglAddon.onContextLoss(() => {
+                    webglAddon.dispose()
+                })
+                terminal.loadAddon(webglAddon)
+            } catch (_) {
+                webglAddon = undefined
+            }
+        }
 
         terminal.attachCustomKeyEventHandler(event => {
             if (!isCopyKeybinding(event) || !terminal.hasSelection()) {
@@ -458,8 +579,11 @@
             host,
             terminal,
             fitAddon,
+            webglAddon,
             renderedLength: session.buffer.length,
-            status: session.status
+            status: session.status,
+            lastReportedCols: undefined,
+            lastReportedRows: undefined
         }
 
         sessionModels.set(session.id, model)
@@ -498,7 +622,7 @@
         return model
     }
 
-    function fitActiveSession() {
+    function fitActiveSession(options) {
         if (!activeSessionId) {
             return
         }
@@ -508,10 +632,22 @@
             return
         }
 
-        requestAnimationFrame(() => {
+        if (!isVisibleSize(viewportElement) || !isVisibleSize(model.host)) {
+            return
+        }
+
+        try {
             model.fitAddon.fit()
+        } catch (_) {
+            return
+        }
+
+        reportTerminalSize(model, Boolean(options && options.forceReport))
+        refreshTerminalViewport(model, Boolean(options && options.refreshRenderer))
+
+        if (!isSettingsPageOpen && !document.hidden) {
             model.terminal.focus()
-        })
+        }
     }
 
     function refreshTerminalAppearance() {
@@ -527,7 +663,10 @@
         }
 
         if (orderedSessions.length > 0) {
-            fitActiveSession()
+            scheduleFitActiveSession({
+                forceReport: true,
+                refreshRenderer: true
+            })
         }
     }
 
@@ -818,6 +957,7 @@
             '--rst-terminal-padding',
             currentSettings.terminalPaddingEnabled ? '8px 6px 8px 8px' : '0px'
         )
+        document.documentElement.classList.toggle('hide-terminal-scrollbar', currentSettings.hideTerminalScrollbar)
 
         renderQuickCommandButtons()
 
@@ -895,6 +1035,14 @@
 
         if (terminalPaddingHintElement) {
             terminalPaddingHintElement.textContent = messages.terminalPaddingHint
+        }
+
+        if (terminalScrollbarLabelElement) {
+            terminalScrollbarLabelElement.textContent = messages.hideTerminalScrollbar
+        }
+
+        if (terminalScrollbarHintElement) {
+            terminalScrollbarHintElement.textContent = messages.hideTerminalScrollbarHint
         }
 
         if (interfaceLanguageSelect) {
@@ -1019,6 +1167,13 @@
         }
 
         refreshTerminalAppearance()
+
+        if (hasSessions) {
+            scheduleFitActiveSession({
+                forceReport: true,
+                refreshRenderer: true
+            })
+        }
     }
 
     function syncState(payload) {
@@ -1062,8 +1217,30 @@
             return
         }
 
-        model.terminal.write(payload.data)
-        model.renderedLength += payload.data.length
+        let pending = pendingWrites.get(payload.sessionId)
+        if (!pending) {
+            pending = []
+            pendingWrites.set(payload.sessionId, pending)
+        }
+        pending.push(payload.data)
+
+        if (!writeFlushScheduled) {
+            writeFlushScheduled = true
+            requestAnimationFrame(flushPendingWrites)
+        }
+    }
+
+    function flushPendingWrites() {
+        writeFlushScheduled = false
+        for (const [sessionId, chunks] of pendingWrites) {
+            const model = sessionModels.get(sessionId)
+            if (model && chunks.length > 0) {
+                const combined = chunks.join('')
+                model.terminal.write(combined)
+                model.renderedLength += combined.length
+            }
+        }
+        pendingWrites.clear()
     }
 
     function handleSessionExit(payload) {
@@ -1100,6 +1277,10 @@
 
         if (terminalPaddingCheckbox) {
             terminalPaddingCheckbox.checked = currentSettings.terminalPaddingEnabled
+        }
+
+        if (terminalScrollbarCheckbox) {
+            terminalScrollbarCheckbox.checked = currentSettings.hideTerminalScrollbar
         }
 
         renderQuickCommandEditors(getQuickCommands())
@@ -1174,8 +1355,9 @@
 
     function closeSettingsModal() {
         setSettingsPageOpen(false)
-        requestAnimationFrame(() => {
-            fitActiveSession()
+        scheduleFitActiveSession({
+            forceReport: true,
+            refreshRenderer: true
         })
     }
 
@@ -1189,6 +1371,7 @@
             terminalFontSize: draftTerminalFontSize,
             languagePreference: normalizeLanguagePreference(interfaceLanguageSelect && interfaceLanguageSelect.value),
             terminalPaddingEnabled: terminalPaddingCheckbox ? terminalPaddingCheckbox.checked : false,
+            hideTerminalScrollbar: terminalScrollbarCheckbox ? terminalScrollbarCheckbox.checked : true,
             quickCommands
         }
 
@@ -1293,6 +1476,48 @@
         const model = activeSessionId ? sessionModels.get(activeSessionId) : undefined
         model && model.terminal.focus()
     })
+
+    window.addEventListener('resize', () => {
+        scheduleFitActiveSession({
+            forceReport: true,
+            refreshRenderer: true
+        })
+    })
+
+    if (window.visualViewport) {
+        window.visualViewport.addEventListener('resize', () => {
+            scheduleFitActiveSession({
+                forceReport: true,
+                refreshRenderer: true
+            })
+        })
+    }
+
+    window.addEventListener('focus', () => {
+        scheduleFitActiveSession({
+            forceReport: true,
+            refreshRenderer: true
+        })
+    })
+
+    document.addEventListener('visibilitychange', () => {
+        if (!document.hidden) {
+            scheduleFitActiveSession({
+                forceReport: true,
+                refreshRenderer: true
+            })
+        }
+    })
+
+    if (document.fonts && document.fonts.ready && typeof document.fonts.ready.then === 'function') {
+        document.fonts.ready.then(() => {
+            scheduleFitActiveSession({
+                forceReport: true,
+                refreshRenderer: true
+            })
+        }).catch(() => {
+        })
+    }
 
     setSettingsPageOpen(false)
     setActiveSettingsTab(activeSettingsTab)
