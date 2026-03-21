@@ -32,3 +32,6 @@ Thumbs.db
 
 # Workflow files
 .workflow/
+
+# Personal notes
+CLAUDE.md

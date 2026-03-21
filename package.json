@@ -4,13 +4,13 @@
   "description": "Embedded command-line terminal in the secondary sidebar",
   "publisher": "JTOFJSJ",
   "icon": "media/extension-icon.png",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "repository": {
     "type": "git",
     "url": "https://gitee.com/wagio_admin/vscode-right-sidebar-terminal"
   },
   "engines": {
-    "vscode": "^1.107.0"
+    "vscode": "^1.105.0"
   },
   "categories": [
     "Other"
