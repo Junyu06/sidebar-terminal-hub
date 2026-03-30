@@ -110,6 +110,7 @@
 
     const sessionModels = new Map()
     const pendingWrites = new Map()
+    const pendingClosedSessionIds = new Set()
     const scheduledFitTimers = new Set()
     let writeFlushScheduled = false
     let orderedSessions = []
@@ -1234,15 +1235,53 @@
             closeButton.title = formatMessage(messages.closeSessionTitle, { name: session.name })
             closeButton.setAttribute('aria-label', formatMessage(messages.closeSessionAria, { name: session.name }))
             closeButton.appendChild(createCloseIcon())
-            closeButton.addEventListener('click', event => {
+            const handleCloseSession = event => {
+                event.preventDefault()
                 event.stopPropagation()
                 postMessage('close-session', { sessionId: session.id })
+                requestAnimationFrame(() => {
+                    try {
+                        removeSessionLocally(session.id)
+                    } catch {
+                    }
+                })
+            }
+            closeButton.addEventListener('pointerdown', event => {
+                handleCloseSession(event)
+            })
+            closeButton.addEventListener('keydown', event => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                    handleCloseSession(event)
+                }
             })
 
             tab.appendChild(trigger)
             tab.appendChild(closeButton)
             tabsElement.appendChild(tab)
         }
+    }
+
+    function removeSessionLocally(sessionId) {
+        if (!sessionId) {
+            return
+        }
+
+        pendingClosedSessionIds.add(sessionId)
+        const nextSessions = orderedSessions.filter(session => session.id !== sessionId)
+        if (nextSessions.length === orderedSessions.length) {
+            return
+        }
+
+        orderedSessions = nextSessions
+
+        if (activeSessionId === sessionId) {
+            activeSessionId = nextSessions[0] ? nextSessions[0].id : undefined
+        }
+
+        disposeSessionModel(sessionId)
+        pendingWrites.delete(sessionId)
+        renderTabs()
+        renderViewport()
     }
 
     function renderViewport() {
@@ -1270,7 +1309,16 @@
     }
 
     function syncState(payload) {
-        const sessions = Array.isArray(payload.sessions) ? payload.sessions : []
+        const rawSessions = Array.isArray(payload.sessions) ? payload.sessions : []
+        const serverSessionIds = new Set(rawSessions.map(session => session.id))
+
+        for (const sessionId of Array.from(pendingClosedSessionIds)) {
+            if (!serverSessionIds.has(sessionId)) {
+                pendingClosedSessionIds.delete(sessionId)
+            }
+        }
+
+        const sessions = rawSessions.filter(session => !pendingClosedSessionIds.has(session.id))
         const incomingIds = new Set(sessions.map(session => session.id))
 
         for (const existingId of Array.from(sessionModels.keys())) {

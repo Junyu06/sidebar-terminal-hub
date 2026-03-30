@@ -28,23 +28,39 @@ export {
     VIEW_ID
 } from './terminalSidebar/constants'
 
-const pty = require('node-pty')
+const fs = require('fs') as {
+    existsSync(filePath: string): boolean
+    statSync(filePath: string): { mode: number }
+    chmodSync(filePath: string, mode: number): void
+}
+const path = require('path') as {
+    join(...parts: string[]): string
+}
+
+type NodePtyModule = {
+    spawn: typeof import('node-pty').spawn
+}
 
 export class TerminalSidebarProvider implements vscode.WebviewViewProvider, vscode.Disposable {
     private readonly sessions = new Map<string, SidebarSession>()
+    private readonly outputChannel = vscode.window.createOutputChannel('Right Sidebar Terminal')
     private view?: vscode.WebviewView
     private isReady = false
     private activeSessionId?: string
     private nextSessionNumber = 1
     private settings: SidebarSettings
+    private ptyModule?: NodePtyModule
 
     constructor(private readonly context: vscode.ExtensionContext) {
         this.settings = normalizeSettings(
             this.context.globalState.get<StoredSidebarSettings>(SETTINGS_KEY)
         )
+        void this.updateSessionContext()
     }
 
     dispose() {
+        this.outputChannel.dispose()
+
         for (const session of this.sessions.values()) {
             if (session.flushTimer !== undefined) {
                 clearTimeout(session.flushTimer)
@@ -56,6 +72,7 @@ export class TerminalSidebarProvider implements vscode.WebviewViewProvider, vsco
         }
 
         this.sessions.clear()
+        void this.updateSessionContext()
     }
 
     async reveal() {
@@ -102,7 +119,11 @@ export class TerminalSidebarProvider implements vscode.WebviewViewProvider, vsco
 
     async createSession() {
         await this.reveal()
-        this.spawnSession({ makeActive: true })
+        try {
+            this.spawnSession({ makeActive: true })
+        } catch (error) {
+            this.reportError('Failed to create terminal session.', error)
+        }
     }
 
     closeActiveSession() {
@@ -251,17 +272,22 @@ export class TerminalSidebarProvider implements vscode.WebviewViewProvider, vsco
             return
         }
 
-        this.spawnSession({
-            makeActive: true,
-            displayName: quickCommand.label,
-            initialCommand: quickCommand.command
-        })
+        try {
+            this.spawnSession({
+                makeActive: true,
+                displayName: quickCommand.label,
+                initialCommand: quickCommand.command
+            })
+        } catch (error) {
+            this.reportError(`Failed to create quick terminal session "${quickCommand.label}".`, error)
+        }
     }
 
     private spawnSession(options: SpawnSessionOptions) {
         const id = `session-${Date.now()}-${this.nextSessionNumber}`
         const cwd = getDefaultCwd()
         const shellSpec = getShellSpec()
+        const pty = this.getPtyModule()
         const cols = 120
         const rows = 36
         const name = options.displayName ?? shellSpec.label
@@ -309,23 +335,13 @@ export class TerminalSidebarProvider implements vscode.WebviewViewProvider, vsco
             }
         })
 
-        session.ptyProcess.onExit((event: { exitCode: number }) => {
+        session.ptyProcess.onExit((_event: { exitCode: number }) => {
             const existing = this.sessions.get(session.id)
             if (!existing) {
                 return
             }
 
-            this.flushSessionData(existing)
-            existing.status = 'exited'
-            existing.exitCode = event.exitCode
-            this.postMessage({
-                type: 'session-exit',
-                payload: {
-                    sessionId: session.id,
-                    exitCode: event.exitCode
-                }
-            })
-            this.postHydrate()
+            this.removeSession(session.id)
         })
 
         this.sessions.set(id, session)
@@ -334,7 +350,72 @@ export class TerminalSidebarProvider implements vscode.WebviewViewProvider, vsco
             this.activeSessionId = id
         }
 
+        void this.updateSessionContext()
         this.postHydrate()
+    }
+
+    private getPtyModule(): NodePtyModule {
+        if (this.ptyModule) {
+            return this.ptyModule
+        }
+
+        try {
+            this.ensureNodePtyHelperExecutable()
+            this.ptyModule = require('node-pty') as NodePtyModule
+            return this.ptyModule
+        } catch (error) {
+            this.reportError('Unable to load node-pty. The embedded terminal cannot start.', error)
+            throw error
+        }
+    }
+
+    private reportError(message: string, error: unknown) {
+        const details = error instanceof Error
+            ? `${error.name}: ${error.message}\n${error.stack ?? ''}`.trim()
+            : String(error)
+
+        this.outputChannel.appendLine(`[error] ${message}`)
+        this.outputChannel.appendLine(details)
+        this.outputChannel.show(true)
+        void vscode.window.showErrorMessage(`${message} See "Right Sidebar Terminal" output for details.`)
+    }
+
+    private ensureNodePtyHelperExecutable() {
+        if (process.platform === 'win32') {
+            return
+        }
+
+        const helperPaths = [
+            path.join(this.context.extensionPath, 'node_modules', 'node-pty', 'prebuilds', 'darwin-arm64', 'spawn-helper'),
+            path.join(this.context.extensionPath, 'node_modules', 'node-pty', 'prebuilds', 'darwin-x64', 'spawn-helper'),
+            path.join(this.context.extensionPath, 'node_modules', 'node-pty', 'build', 'Release', 'spawn-helper')
+        ]
+
+        for (const helperPath of helperPaths) {
+            if (!fs.existsSync(helperPath)) {
+                continue
+            }
+
+            try {
+                const stats = fs.statSync(helperPath)
+                const isExecutable = (stats.mode & 0o111) !== 0
+
+                if (!isExecutable) {
+                    fs.chmodSync(helperPath, 0o755)
+                }
+            } catch (error) {
+                this.outputChannel.appendLine(`[warn] Failed to update node-pty helper permissions: ${helperPath}`)
+                this.outputChannel.appendLine(String(error))
+            }
+        }
+    }
+
+    private updateSessionContext() {
+        return vscode.commands.executeCommand(
+            'setContext',
+            'terminalSidebar.hasSessions',
+            this.sessions.size > 0
+        )
     }
 
     private closeSession(sessionId: string) {
@@ -343,18 +424,28 @@ export class TerminalSidebarProvider implements vscode.WebviewViewProvider, vsco
             return
         }
 
-        this.flushSessionData(session)
-        this.sessions.delete(sessionId)
-
         try {
             session.ptyProcess.kill()
         } catch {
         }
 
+        this.removeSession(sessionId)
+    }
+
+    private removeSession(sessionId: string) {
+        const session = this.sessions.get(sessionId)
+        if (!session) {
+            return
+        }
+
+        this.flushSessionData(session)
+        this.sessions.delete(sessionId)
+
         if (this.activeSessionId === sessionId) {
             this.activeSessionId = Array.from(this.sessions.keys())[0]
         }
 
+        void this.updateSessionContext()
         this.postHydrate()
     }
 

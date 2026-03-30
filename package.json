@@ -42,6 +42,16 @@
       {
         "command": "terminalSidebar.open",
         "title": "Open Terminal Sidebar"
+      },
+      {
+        "command": "terminalSidebar.newSession",
+        "title": "New Terminal Session",
+        "icon": "$(add)"
+      },
+      {
+        "command": "terminalSidebar.closeActiveSession",
+        "title": "Close Active Terminal Session",
+        "icon": "$(close)"
       }
     ],
     "menus": {
@@ -50,6 +60,11 @@
           "command": "terminalSidebar.newSession",
           "when": "view == rstTerminalSecondaryView",
           "group": "navigation@1"
+        },
+        {
+          "command": "terminalSidebar.closeActiveSession",
+          "when": "view == rstTerminalSecondaryView && terminalSidebar.hasSessions",
+          "group": "navigation@2"
         }
       ]
     }

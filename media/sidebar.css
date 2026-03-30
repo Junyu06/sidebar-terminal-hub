@@ -172,9 +172,9 @@ button {
 }
 
 .tab {
+    position: relative;
     display: flex;
     align-items: center;
-    gap: 6px;
     width: 100px;
     min-width: 80px;
     max-width: 120px;
@@ -199,14 +199,14 @@ button {
 }
 
 .tab-trigger {
-    flex: 1;
+    width: 100%;
     min-width: 0;
     display: flex;
     align-items: center;
     gap: 6px;
-    padding: 3px 2px 3px 10px;
+    padding: 3px 28px 3px 10px;
     border: 0;
-    border-radius: 10px;
+    border-radius: 8px;
     background: transparent;
     color: inherit;
     cursor: pointer;
@@ -237,8 +237,11 @@ button {
 .tab-close {
     width: 20px;
     height: 20px;
-    flex: none;
-    margin-right: 4px;
+    position: absolute;
+    top: 50%;
+    right: 4px;
+    transform: translateY(-50%);
+    z-index: 2;
     border: 0;
     border-radius: 8px;
     background: transparent;
@@ -248,6 +251,7 @@ button {
     align-items: center;
     justify-content: center;
     opacity: 0.76;
+    pointer-events: auto;
 }
 
 .tab:hover .tab-close,
