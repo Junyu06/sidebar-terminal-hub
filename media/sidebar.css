@@ -183,10 +183,16 @@ button {
     border: 1px solid transparent;
     background: color-mix(in srgb, var(--vscode-editorWidget-background) 66%, transparent);
     transition: background-color 0.18s ease, border-color 0.18s ease;
+    cursor: grab;
 }
 
 .tab:hover {
     background: color-mix(in srgb, var(--vscode-editorWidget-background) 80%, transparent);
+}
+
+.tab.dragging {
+    opacity: 0.64;
+    cursor: grabbing;
 }
 
 .tab.active {
@@ -204,7 +210,7 @@ button {
     display: flex;
     align-items: center;
     gap: 6px;
-    padding: 3px 28px 3px 10px;
+    padding: 3px 48px 3px 10px;
     border: 0;
     border-radius: 8px;
     background: transparent;
@@ -234,12 +240,12 @@ button {
     background: var(--vscode-terminal-ansiRed, #f14c4c);
 }
 
+.tab-rename,
 .tab-close {
     width: 20px;
     height: 20px;
     position: absolute;
     top: 50%;
-    right: 4px;
     transform: translateY(-50%);
     z-index: 2;
     border: 0;
@@ -254,11 +260,22 @@ button {
     pointer-events: auto;
 }
 
+.tab-rename {
+    right: 24px;
+}
+
+.tab-close {
+    right: 4px;
+}
+
 .tab:hover .tab-close,
-.tab.active .tab-close {
+.tab.active .tab-close,
+.tab:hover .tab-rename,
+.tab.active .tab-rename {
     opacity: 1;
 }
 
+.tab-rename:hover,
 .tab-close:hover {
     background: var(--vscode-toolbar-hoverBackground, rgba(127, 127, 127, 0.12));
     color: var(--vscode-foreground);

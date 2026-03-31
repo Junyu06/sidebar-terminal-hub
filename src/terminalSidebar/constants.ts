@@ -6,6 +6,7 @@ export const CLOSE_ACTIVE_SESSION_COMMAND = 'terminalSidebar.closeActiveSession'
 
 export const MAX_BUFFER_LENGTH = 200_000
 export const SETTINGS_KEY = 'terminalSidebar.settings'
+export const SESSIONS_KEY = 'terminalSidebar.sessions'
 export const LIVE_OUTPUT_FLUSH_DELAY_MS = 8
 export const IMMEDIATE_FLUSH_SEQUENCE_PATTERN = /\u001b\[\?(?:47|1047|1048|1049)[hl]|\u001b\[2J|\u001bc/
 

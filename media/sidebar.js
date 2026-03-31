@@ -60,7 +60,9 @@
         cancel: 'Cancel',
         save: 'Save',
         closeSessionTitle: 'Close {name}',
-        closeSessionAria: 'Close {name}'
+        closeSessionAria: 'Close {name}',
+        renameSessionTitle: 'Rename session',
+        renameSessionPrompt: 'Enter a new tab name'
     }
 
     const builtinQuickCommandIcons = config.builtinQuickCommandIcons || {}
@@ -115,6 +117,7 @@
     let writeFlushScheduled = false
     let orderedSessions = []
     let activeSessionId = undefined
+    let draggedSessionId = undefined
     let currentLanguage = config.language === 'zh-CN' ? 'zh-CN' : 'en'
     let messages = normalizeMessages(config.messages)
     let currentSettings = normalizeSettings(config.settings)
@@ -1197,6 +1200,50 @@
         return icon
     }
 
+    function createRenameIcon() {
+        const icon = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
+        icon.setAttribute('viewBox', '0 0 24 24')
+        icon.setAttribute('aria-hidden', 'true')
+
+        const path = document.createElementNS('http://www.w3.org/2000/svg', 'path')
+        path.setAttribute('d', 'M4 20h4l10-10-4-4L4 16v4M13 7l4 4')
+        icon.appendChild(path)
+
+        return icon
+    }
+
+    function requestRenameSession(session) {
+        if (!session) {
+            return
+        }
+
+        postMessage('request-rename-session', {
+            sessionId: session.id
+        })
+    }
+
+    function moveSessionBefore(targetSessionId) {
+        if (!draggedSessionId || !targetSessionId || draggedSessionId === targetSessionId) {
+            return
+        }
+
+        const sourceIndex = orderedSessions.findIndex(session => session.id === draggedSessionId)
+        const targetIndex = orderedSessions.findIndex(session => session.id === targetSessionId)
+        if (sourceIndex < 0 || targetIndex < 0 || sourceIndex === targetIndex) {
+            return
+        }
+
+        const nextSessions = orderedSessions.slice()
+        const [movedSession] = nextSessions.splice(sourceIndex, 1)
+        nextSessions.splice(targetIndex, 0, movedSession)
+        orderedSessions = nextSessions
+        renderTabs()
+        renderViewport()
+        postMessage('reorder-sessions', {
+            sessionIds: orderedSessions.map(session => session.id)
+        })
+    }
+
     function renderTabs() {
         tabsElement.replaceChildren()
         tabsElement.classList.toggle('tabs-empty', orderedSessions.length === 0)
@@ -1208,9 +1255,37 @@
         for (const session of orderedSessions) {
             const tab = document.createElement('div')
             tab.className = session.id === activeSessionId ? 'tab active' : 'tab'
+            tab.draggable = true
+            tab.dataset.sessionId = session.id
             if (session.status === 'exited') {
                 tab.classList.add('exited')
             }
+
+            tab.addEventListener('dragstart', event => {
+                draggedSessionId = session.id
+                tab.classList.add('dragging')
+                if (event.dataTransfer) {
+                    event.dataTransfer.effectAllowed = 'move'
+                    event.dataTransfer.setData('text/plain', session.id)
+                }
+            })
+            tab.addEventListener('dragend', () => {
+                draggedSessionId = undefined
+                tab.classList.remove('dragging')
+            })
+            tab.addEventListener('dragover', event => {
+                if (!draggedSessionId || draggedSessionId === session.id) {
+                    return
+                }
+                event.preventDefault()
+                if (event.dataTransfer) {
+                    event.dataTransfer.dropEffect = 'move'
+                }
+            })
+            tab.addEventListener('drop', event => {
+                event.preventDefault()
+                moveSessionBefore(session.id)
+            })
 
             const trigger = document.createElement('button')
             trigger.type = 'button'
@@ -1228,6 +1303,18 @@
             title.className = 'tab-title'
             title.textContent = session.name
             trigger.appendChild(title)
+
+            const renameButton = document.createElement('button')
+            renameButton.type = 'button'
+            renameButton.className = 'tab-rename'
+            renameButton.title = messages.renameSessionTitle
+            renameButton.setAttribute('aria-label', messages.renameSessionTitle)
+            renameButton.appendChild(createRenameIcon())
+            renameButton.addEventListener('click', event => {
+                event.preventDefault()
+                event.stopPropagation()
+                requestRenameSession(session)
+            })
 
             const closeButton = document.createElement('button')
             closeButton.type = 'button'
@@ -1256,6 +1343,7 @@
             })
 
             tab.appendChild(trigger)
+            tab.appendChild(renameButton)
             tab.appendChild(closeButton)
             tabsElement.appendChild(tab)
         }

@@ -58,7 +58,9 @@ const UI_MESSAGES: Record<ResolvedLanguage, UiMessages> = {
         cancel: 'Cancel',
         save: 'Save',
         closeSessionTitle: 'Close {name}',
-        closeSessionAria: 'Close {name}'
+        closeSessionAria: 'Close {name}',
+        renameSessionTitle: 'Rename session',
+        renameSessionPrompt: 'Enter a new tab name'
     },
     'zh-CN': {
         documentTitle: '嵌入式终端',
@@ -111,7 +113,9 @@ const UI_MESSAGES: Record<ResolvedLanguage, UiMessages> = {
         cancel: '取消',
         save: '保存',
         closeSessionTitle: '关闭 {name}',
-        closeSessionAria: '关闭 {name}'
+        closeSessionAria: '关闭 {name}',
+        renameSessionTitle: '重命名标签',
+        renameSessionPrompt: '输入新的标签名称'
     }
 }
 

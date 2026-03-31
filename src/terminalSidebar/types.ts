@@ -69,6 +69,8 @@ export interface UiMessages {
     save: string
     closeSessionTitle: string
     closeSessionAria: string
+    renameSessionTitle: string
+    renameSessionPrompt: string
 }
 
 export interface SidebarSession {
@@ -87,6 +89,15 @@ export interface SidebarSession {
     flushTimer: number | undefined
     pendingInitialCommand?: string
     hasReportedSize: boolean
+}
+
+export interface StoredSidebarSession {
+    id: string
+    name: string
+    cwd: string
+    shellPath: string
+    shellLabel: string
+    buffer: string
 }
 
 export interface SidebarSettings {
@@ -109,7 +120,12 @@ export interface StoredSidebarSettings {
 
 export interface SpawnSessionOptions {
     makeActive: boolean
+    id?: string
     displayName?: string
+    cwd?: string
+    shellPath?: string
+    shellLabel?: string
+    initialBuffer?: string
     initialCommand?: string
 }
 
@@ -123,10 +139,13 @@ export type WebviewMessage =
     | { type: 'ready' }
     | { type: 'create-session' }
     | { type: 'create-quick-session'; quickCommandId: string }
+    | { type: 'request-rename-session'; sessionId: string }
     | { type: 'set-active-session'; sessionId: string }
     | { type: 'input'; sessionId: string; data: string }
     | { type: 'resize'; sessionId: string; cols: number; rows: number }
     | { type: 'close-session'; sessionId: string }
+    | { type: 'rename-session'; sessionId: string; name: string }
+    | { type: 'reorder-sessions'; sessionIds: string[] }
     | { type: 'update-settings'; settings: StoredSidebarSettings }
     | { type: 'request-copy'; text: string }
     | { type: 'request-paste'; sessionId: string }

@@ -6,6 +6,7 @@ import {
     LIVE_OUTPUT_FLUSH_DELAY_MS,
     MAX_BUFFER_LENGTH,
     SETTINGS_KEY,
+    SESSIONS_KEY,
     VIEW_ID
 } from './terminalSidebar/constants'
 import { getResolvedLanguage, getUiMessages } from './terminalSidebar/i18n'
@@ -15,6 +16,7 @@ import type {
     SidebarSession,
     SidebarSettings,
     SpawnSessionOptions,
+    StoredSidebarSession,
     StoredSidebarSettings,
     WebviewMessage
 } from './terminalSidebar/types'
@@ -50,6 +52,7 @@ export class TerminalSidebarProvider implements vscode.WebviewViewProvider, vsco
     private nextSessionNumber = 1
     private settings: SidebarSettings
     private ptyModule?: NodePtyModule
+    private hasRestoredSessions = false
 
     constructor(private readonly context: vscode.ExtensionContext) {
         this.settings = normalizeSettings(
@@ -76,6 +79,8 @@ export class TerminalSidebarProvider implements vscode.WebviewViewProvider, vsco
     }
 
     async reveal() {
+        await this.restoreSessionsIfNeeded()
+
         if (this.view) {
             this.view.show(false)
             return
@@ -191,6 +196,15 @@ export class TerminalSidebarProvider implements vscode.WebviewViewProvider, vsco
             case 'create-quick-session':
                 this.spawnQuickSession(message.quickCommandId)
                 return
+            case 'request-rename-session':
+                void this.promptRenameSession(message.sessionId)
+                return
+            case 'rename-session':
+                void this.renameSession(message.sessionId, message.name)
+                return
+            case 'reorder-sessions':
+                void this.reorderSessions(message.sessionIds)
+                return
             case 'set-active-session':
                 if (this.sessions.has(message.sessionId)) {
                     this.activeSessionId = message.sessionId
@@ -284,9 +298,15 @@ export class TerminalSidebarProvider implements vscode.WebviewViewProvider, vsco
     }
 
     private spawnSession(options: SpawnSessionOptions) {
-        const id = `session-${Date.now()}-${this.nextSessionNumber}`
-        const cwd = getDefaultCwd()
-        const shellSpec = getShellSpec()
+        const id = options.id ?? `session-${Date.now()}-${this.nextSessionNumber}`
+        const cwd = options.cwd ?? getDefaultCwd()
+        const shellSpec = options.shellPath
+            ? {
+                path: options.shellPath,
+                args: [] as string[],
+                label: options.shellLabel ?? options.displayName ?? options.shellPath.split(/[\\/]/).pop() ?? 'shell'
+            }
+            : getShellSpec()
         const pty = this.getPtyModule()
         const cols = 120
         const rows = 36
@@ -301,7 +321,7 @@ export class TerminalSidebarProvider implements vscode.WebviewViewProvider, vsco
             shellPath: shellSpec.path,
             shellLabel: shellSpec.label,
             status: 'running',
-            buffer: '',
+            buffer: options.initialBuffer ?? '',
             cols,
             rows,
             pendingData: '',
@@ -351,6 +371,7 @@ export class TerminalSidebarProvider implements vscode.WebviewViewProvider, vsco
         }
 
         void this.updateSessionContext()
+        void this.persistSessions()
         this.postHydrate()
     }
 
@@ -446,6 +467,7 @@ export class TerminalSidebarProvider implements vscode.WebviewViewProvider, vsco
         }
 
         void this.updateSessionContext()
+        void this.persistSessions()
         this.postHydrate()
     }
 
@@ -461,6 +483,7 @@ export class TerminalSidebarProvider implements vscode.WebviewViewProvider, vsco
 
         const data = session.pendingData
         session.pendingData = ''
+        void this.persistSessions()
         this.postMessage({
             type: 'session-data',
             payload: {
@@ -539,5 +562,114 @@ export class TerminalSidebarProvider implements vscode.WebviewViewProvider, vsco
         this.settings = normalizeSettings(settings)
         await this.context.globalState.update(SETTINGS_KEY, this.settings)
         this.postHydrate()
+    }
+
+    private async renameSession(sessionId: string, name: string) {
+        const session = this.sessions.get(sessionId)
+        const nextName = name.trim()
+        if (!session || !nextName) {
+            return
+        }
+
+        session.name = nextName
+        await this.persistSessions()
+        this.postHydrate()
+    }
+
+    private async promptRenameSession(sessionId: string) {
+        const session = this.sessions.get(sessionId)
+        if (!session) {
+            return
+        }
+
+        const language = getResolvedLanguage(this.settings.languagePreference)
+        const messages = getUiMessages(language)
+        const nextName = await vscode.window.showInputBox({
+            title: messages.renameSessionTitle,
+            prompt: messages.renameSessionPrompt,
+            value: session.name,
+            valueSelection: [0, session.name.length],
+            ignoreFocusOut: true,
+            validateInput: value => value.trim().length > 0 ? undefined : messages.renameSessionPrompt
+        })
+
+        if (typeof nextName !== 'string') {
+            return
+        }
+
+        await this.renameSession(sessionId, nextName)
+    }
+
+    private async reorderSessions(sessionIds: string[]) {
+        if (!Array.isArray(sessionIds) || sessionIds.length === 0) {
+            return
+        }
+
+        const reordered = new Map<string, SidebarSession>()
+
+        for (const sessionId of sessionIds) {
+            const session = this.sessions.get(sessionId)
+            if (session) {
+                reordered.set(sessionId, session)
+            }
+        }
+
+        for (const [sessionId, session] of this.sessions) {
+            if (!reordered.has(sessionId)) {
+                reordered.set(sessionId, session)
+            }
+        }
+
+        this.sessions.clear()
+        for (const [sessionId, session] of reordered) {
+            this.sessions.set(sessionId, session)
+        }
+
+        await this.persistSessions()
+        this.postHydrate()
+    }
+
+    private async restoreSessionsIfNeeded() {
+        if (this.hasRestoredSessions) {
+            return
+        }
+
+        this.hasRestoredSessions = true
+        const storedSessions = this.context.globalState.get<StoredSidebarSession[]>(SESSIONS_KEY)
+        if (!Array.isArray(storedSessions) || storedSessions.length === 0) {
+            return
+        }
+
+        for (const storedSession of storedSessions) {
+            try {
+                this.spawnSession({
+                    makeActive: false,
+                    id: storedSession.id,
+                    displayName: storedSession.name,
+                    cwd: storedSession.cwd,
+                    shellPath: storedSession.shellPath,
+                    shellLabel: storedSession.shellLabel,
+                    initialBuffer: storedSession.buffer
+                })
+            } catch {
+            }
+        }
+
+        if (!this.activeSessionId) {
+            this.activeSessionId = storedSessions[0]?.id
+        }
+    }
+
+    private persistSessions() {
+        const storedSessions: StoredSidebarSession[] = Array.from(this.sessions.values()).map(session => ({
+            id: session.id,
+            name: session.name,
+            cwd: session.cwd,
+            shellPath: session.shellPath,
+            shellLabel: session.shellLabel,
+            buffer: session.buffer
+        }))
+
+        return this.context.globalState.update(SESSIONS_KEY, storedSessions)
     }
 }
