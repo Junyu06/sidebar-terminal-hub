@@ -67,6 +67,11 @@ export interface UiMessages {
     quickCommandIconHint: string
     cancel: string
     save: string
+    resetSessionMemory: string
+    resetSessionMemoryHint: string
+    resetSessionMemoryButton: string
+    resetSessionMemoryConfirm: string
+    resetSessionMemorySuccess: string
     closeSessionTitle: string
     closeSessionAria: string
     renameSessionTitle: string
@@ -98,6 +103,11 @@ export interface StoredSidebarSession {
     shellPath: string
     shellLabel: string
     buffer: string
+}
+
+export interface StoredSidebarState {
+    activeSessionId?: string
+    sessions: StoredSidebarSession[]
 }
 
 export interface SidebarSettings {
@@ -146,6 +156,7 @@ export type WebviewMessage =
     | { type: 'close-session'; sessionId: string }
     | { type: 'rename-session'; sessionId: string; name: string }
     | { type: 'reorder-sessions'; sessionIds: string[] }
+    | { type: 'request-reset-session-memory' }
     | { type: 'update-settings'; settings: StoredSidebarSettings }
     | { type: 'request-copy'; text: string }
     | { type: 'request-paste'; sessionId: string }

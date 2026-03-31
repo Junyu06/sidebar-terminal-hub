@@ -59,6 +59,11 @@
         quickCommandIconHint: 'Supports image URL, Base64 data URL, or SVG code. Leave blank to use the first command letter.',
         cancel: 'Cancel',
         save: 'Save',
+        resetSessionMemory: 'Session memory',
+        resetSessionMemoryHint: 'Clear all saved session snapshots and close the current sidebar terminal tabs.',
+        resetSessionMemoryButton: 'Reset all session memory',
+        resetSessionMemoryConfirm: 'Reset all session memory? This will close current sidebar terminal tabs and remove restored session snapshots.',
+        resetSessionMemorySuccess: 'Session memory cleared.',
         closeSessionTitle: 'Close {name}',
         closeSessionAria: 'Close {name}',
         renameSessionTitle: 'Rename session',
@@ -106,6 +111,9 @@
     const terminalScrollbarLabelElement = document.getElementById('show-terminal-scrollbar-label')
     const terminalScrollbarHintElement = document.getElementById('show-terminal-scrollbar-hint')
     const terminalScrollbarCheckbox = document.getElementById('show-terminal-scrollbar-enabled')
+    const resetSessionMemoryLabelElement = document.getElementById('reset-session-memory-label')
+    const resetSessionMemoryHintElement = document.getElementById('reset-session-memory-hint')
+    const resetSessionMemoryButton = document.getElementById('reset-session-memory')
     const commandButtonsTitleElement = document.getElementById('command-buttons-title')
     const addQuickCommandButton = document.getElementById('add-quick-command')
     const quickCommandListElement = document.getElementById('quick-command-list')
@@ -1142,6 +1150,18 @@
             terminalScrollbarHintElement.textContent = messages.showTerminalScrollbarHint
         }
 
+        if (resetSessionMemoryLabelElement) {
+            resetSessionMemoryLabelElement.textContent = messages.resetSessionMemory
+        }
+
+        if (resetSessionMemoryHintElement) {
+            resetSessionMemoryHintElement.textContent = messages.resetSessionMemoryHint
+        }
+
+        if (resetSessionMemoryButton) {
+            resetSessionMemoryButton.textContent = messages.resetSessionMemoryButton
+        }
+
         if (interfaceLanguageSelect) {
             const systemOption = interfaceLanguageSelect.querySelector('option[value="system"]')
             const chineseOption = interfaceLanguageSelect.querySelector('option[value="zh-CN"]')
@@ -1694,6 +1714,12 @@
     settingsSaveButton.addEventListener('click', () => {
         saveSettings()
     })
+
+    if (resetSessionMemoryButton) {
+        resetSessionMemoryButton.addEventListener('click', () => {
+            postMessage('request-reset-session-memory')
+        })
+    }
 
     window.addEventListener('keydown', event => {
         if (event.key === 'Escape' && isSettingsPageOpen) {

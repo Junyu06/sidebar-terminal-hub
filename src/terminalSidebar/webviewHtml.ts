@@ -141,6 +141,13 @@ export function createSidebarHtml(options: CreateSidebarHtmlOptions): string {
                                 <input id="show-terminal-scrollbar-enabled" class="checkbox-input" type="checkbox" aria-labelledby="show-terminal-scrollbar-label" aria-describedby="show-terminal-scrollbar-hint"${settings.showTerminalScrollbar ? ' checked' : ''} />
                             </label>
                         </div>
+                        <div class="field">
+                            <span id="reset-session-memory-label" class="field-label">${messages.resetSessionMemory}</span>
+                            <div class="settings-action-card" aria-labelledby="reset-session-memory-label" aria-describedby="reset-session-memory-hint">
+                                <span id="reset-session-memory-hint" class="toggle-hint">${messages.resetSessionMemoryHint}</span>
+                                <button id="reset-session-memory" class="secondary-button danger-button" type="button">${messages.resetSessionMemoryButton}</button>
+                            </div>
+                        </div>
                     </div>
                 </div>
                 <div id="settings-panel-commands" class="settings-panel" role="tabpanel" aria-labelledby="settings-tab-commands" data-settings-panel="commands" hidden>

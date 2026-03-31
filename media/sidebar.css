@@ -555,6 +555,25 @@ button {
     background: color-mix(in srgb, var(--vscode-sideBar-background) 90%, transparent);
 }
 
+.settings-action-card {
+    display: grid;
+    gap: 10px;
+    padding: 10px 12px;
+    border-radius: 12px;
+    border: 1px solid var(--vscode-widget-border, rgba(127, 127, 127, 0.18));
+    background: color-mix(in srgb, var(--vscode-sideBar-background) 90%, transparent);
+}
+
+.danger-button {
+    justify-self: start;
+    border-color: color-mix(in srgb, var(--vscode-errorForeground, #f14c4c) 36%, var(--vscode-widget-border, rgba(127, 127, 127, 0.24)));
+    color: var(--vscode-errorForeground, #f14c4c);
+}
+
+.danger-button:hover {
+    background: color-mix(in srgb, var(--vscode-errorForeground, #f14c4c) 10%, var(--vscode-editorWidget-background) 94%);
+}
+
 .field {
     display: grid;
     gap: 8px;

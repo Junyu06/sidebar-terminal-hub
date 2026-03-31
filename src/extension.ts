@@ -7,8 +7,11 @@ import {
     VIEW_ID
 } from './terminalSidebarProvider'
 
+let providerInstance: TerminalSidebarProvider | undefined
+
 export function activate(context: vscode.ExtensionContext) {
     const provider = new TerminalSidebarProvider(context)
+    providerInstance = provider
 
     context.subscriptions.push(provider)
     context.subscriptions.push(
@@ -47,4 +50,6 @@ export function activate(context: vscode.ExtensionContext) {
     )
 }
 
-export function deactivate() {}
+export function deactivate() {
+    return providerInstance?.prepareForShutdown()
+}
