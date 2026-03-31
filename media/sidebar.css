@@ -175,10 +175,10 @@ button {
     position: relative;
     display: flex;
     align-items: center;
-    width: 100px;
-    min-width: 80px;
-    max-width: 120px;
-    flex: 0 1 100px;
+    width: 152px;
+    min-width: 116px;
+    max-width: 188px;
+    flex: 0 1 152px;
     border-radius: 8px;
     border: 1px solid transparent;
     background: color-mix(in srgb, var(--vscode-editorWidget-background) 66%, transparent);
@@ -210,13 +210,19 @@ button {
     display: flex;
     align-items: center;
     gap: 6px;
-    padding: 3px 48px 3px 10px;
+    padding: 3px 12px 3px 10px;
     border: 0;
     border-radius: 8px;
     background: transparent;
     color: inherit;
     cursor: pointer;
     text-align: left;
+    transition: padding-right 0.18s ease;
+}
+
+.tab:hover .tab-trigger,
+.tab.active .tab-trigger {
+    padding-right: 48px;
 }
 
 .tab-title {
@@ -249,15 +255,17 @@ button {
     transform: translateY(-50%);
     z-index: 2;
     border: 0;
-    border-radius: 8px;
+    border-radius: 6px;
     background: transparent;
     color: var(--vscode-descriptionForeground);
     cursor: pointer;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    opacity: 0.76;
-    pointer-events: auto;
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(-50%) scale(0.92);
+    transition: opacity 0.18s ease, transform 0.18s ease, background-color 0.18s ease, color 0.18s ease;
 }
 
 .tab-rename {
@@ -273,6 +281,8 @@ button {
 .tab:hover .tab-rename,
 .tab.active .tab-rename {
     opacity: 1;
+    pointer-events: auto;
+    transform: translateY(-50%) scale(1);
 }
 
 .tab-rename:hover,
