@@ -126,6 +126,8 @@
     let orderedSessions = []
     let activeSessionId = undefined
     let draggedSessionId = undefined
+    let dragOriginSessionIds = undefined
+    let didDropSession = false
     let currentLanguage = config.language === 'zh-CN' ? 'zh-CN' : 'en'
     let messages = normalizeMessages(config.messages)
     let currentSettings = normalizeSettings(config.settings)
@@ -1242,23 +1244,61 @@
         })
     }
 
-    function moveSessionBefore(targetSessionId) {
+    function moveDraggedSession(targetSessionId, placement) {
         if (!draggedSessionId || !targetSessionId || draggedSessionId === targetSessionId) {
             return
         }
 
         const sourceIndex = orderedSessions.findIndex(session => session.id === draggedSessionId)
         const targetIndex = orderedSessions.findIndex(session => session.id === targetSessionId)
-        if (sourceIndex < 0 || targetIndex < 0 || sourceIndex === targetIndex) {
+        if (sourceIndex < 0 || targetIndex < 0) {
             return
         }
 
         const nextSessions = orderedSessions.slice()
         const [movedSession] = nextSessions.splice(sourceIndex, 1)
-        nextSessions.splice(targetIndex, 0, movedSession)
+        const targetIndexAfterRemoval = nextSessions.findIndex(session => session.id === targetSessionId)
+        const insertIndex = placement === 'after'
+            ? targetIndexAfterRemoval + 1
+            : targetIndexAfterRemoval
+
+        nextSessions.splice(insertIndex, 0, movedSession)
+
+        const currentOrder = orderedSessions.map(session => session.id).join('|')
+        const nextOrder = nextSessions.map(session => session.id).join('|')
+        if (currentOrder === nextOrder) {
+            return
+        }
+
         orderedSessions = nextSessions
         renderTabs()
-        renderViewport()
+    }
+
+    function restoreDraggedSessionOrder() {
+        if (!Array.isArray(dragOriginSessionIds) || dragOriginSessionIds.length === 0) {
+            return
+        }
+
+        const sessionById = new Map(orderedSessions.map(session => [session.id, session]))
+        const restoredSessions = []
+
+        for (const sessionId of dragOriginSessionIds) {
+            const session = sessionById.get(sessionId)
+            if (session) {
+                restoredSessions.push(session)
+                sessionById.delete(sessionId)
+            }
+        }
+
+        for (const session of sessionById.values()) {
+            restoredSessions.push(session)
+        }
+
+        orderedSessions = restoredSessions
+        renderTabs()
+    }
+
+    function persistDraggedSessionOrder() {
         postMessage('reorder-sessions', {
             sessionIds: orderedSessions.map(session => session.id)
         })
@@ -1283,6 +1323,8 @@
 
             tab.addEventListener('dragstart', event => {
                 draggedSessionId = session.id
+                dragOriginSessionIds = orderedSessions.map(item => item.id)
+                didDropSession = false
                 tab.classList.add('dragging')
                 if (event.dataTransfer) {
                     event.dataTransfer.effectAllowed = 'move'
@@ -1290,7 +1332,12 @@
                 }
             })
             tab.addEventListener('dragend', () => {
+                if (!didDropSession) {
+                    restoreDraggedSessionOrder()
+                }
                 draggedSessionId = undefined
+                dragOriginSessionIds = undefined
+                didDropSession = false
                 tab.classList.remove('dragging')
             })
             tab.addEventListener('dragover', event => {
@@ -1301,10 +1348,14 @@
                 if (event.dataTransfer) {
                     event.dataTransfer.dropEffect = 'move'
                 }
+                const rect = tab.getBoundingClientRect()
+                const placement = event.clientX > rect.left + rect.width / 2 ? 'after' : 'before'
+                moveDraggedSession(session.id, placement)
             })
             tab.addEventListener('drop', event => {
                 event.preventDefault()
-                moveSessionBefore(session.id)
+                didDropSession = true
+                persistDraggedSessionOrder()
             })
 
             const trigger = document.createElement('button')
