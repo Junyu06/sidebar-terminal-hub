@@ -1,7 +1,7 @@
 {
   "name": "sidebar-terminal-hub",
   "displayName": "Sidebar Terminal Hub",
-  "description": "Embedded command-line terminal in the secondary sidebar",
+  "description": "Interactive terminal in the VS Code secondary sidebar.",
   "publisher": "TerrysPlayground",
   "icon": "media/extension-icon.png",
   "version": "1.0.7",
