@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256" fill="none">
+  <defs>
+    <linearGradient id="bg-grad" x1="0" y1="0" x2="256" y2="256" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#1E1B4B"/>
+      <stop offset="100%" stop-color="#020617"/>
+    </linearGradient>
+    <linearGradient id="sidebar-grad" x1="0" y1="0" x2="0" y2="256" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#60A5FA" stop-opacity="0.8"/>
+      <stop offset="100%" stop-color="#2563EB" stop-opacity="0.95"/>
+    </linearGradient>
+    <filter id="terminal-glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="8" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+    <filter id="inner-shadow">
+      <feOffset dx="0" dy="4" />
+      <feGaussianBlur stdDeviation="4" result="offset-blur" />
+      <feComposite operator="out" in="SourceGraphic" in2="offset-blur" result="inverse" />
+      <feFlood flood-color="black" flood-opacity="0.4" result="color" />
+      <feComposite operator="in" in="color" in2="inverse" result="shadow" />
+      <feComposite operator="over" in="shadow" in2="SourceGraphic" />
+    </filter>
+  </defs>
+  <rect width="256" height="256" rx="60" fill="url(#bg-grad)"/>
+  <rect x="4" y="4" width="248" height="248" rx="56" stroke="white" stroke-opacity="0.08" stroke-width="2"/>
+  <rect x="32" y="32" width="192" height="192" rx="24" fill="#0B1222" filter="url(#inner-shadow)"/>
+  <rect x="152" y="32" width="72" height="192" rx="20" fill="url(#sidebar-grad)" stroke="white" stroke-opacity="0.15" stroke-width="1.5"/>
+  <g transform="translate(170, 95)" filter="url(#terminal-glow)">
+    <path d="M6 0L20 14L6 28" stroke="white" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" />
+    <rect x="8" y="42" width="24" height="8" rx="4" fill="#93C5FD"/>
+  </g>
+  <rect x="52" y="60" width="70" height="8" rx="4" fill="#334155" opacity="0.6"/>
+  <rect x="52" y="80" width="45" height="8" rx="4" fill="#334155" opacity="0.4"/>
+  <rect x="52" y="100" width="55" height="8" rx="4" fill="#334155" opacity="0.5"/>
+</svg>

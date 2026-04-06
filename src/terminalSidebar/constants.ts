@@ -19,4 +19,8 @@ export const DEFAULT_QUICK_COMMANDS: ReadonlyArray<{
     label: string
     command: string
     icon: string
-}> = []
+}> = [
+    { id: 'codex', label: 'Codex', command: 'codex', icon: 'builtin:codex' },
+    { id: 'claude', label: 'Claude', command: 'claude', icon: 'builtin:claude' },
+    { id: 'gemini', label: 'Gemini', command: 'gemini', icon: 'builtin:gemini' }
+]

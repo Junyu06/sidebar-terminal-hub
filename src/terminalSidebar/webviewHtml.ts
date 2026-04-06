@@ -1,5 +1,6 @@
 import * as vscode from 'vscode'
 
+import { DEFAULT_QUICK_COMMANDS } from './constants'
 import { formatTabCount } from './i18n'
 import type {
     LanguagePreference,
@@ -48,7 +49,7 @@ export function createSidebarHtml(options: CreateSidebarHtmlOptions): string {
     )
     const webviewConfig = {
         defaultTerminalFontSize,
-        builtinQuickCommandIcons: {},
+        builtinQuickCommandIcons: getBuiltinQuickCommandIconUriMap(webview, extensionUri),
         language,
         messages,
         settings
@@ -173,6 +174,45 @@ export function createSidebarHtml(options: CreateSidebarHtmlOptions): string {
     <script nonce="${nonce}" src="${sidebarScriptUri}"></script>
 </body>
 </html>`
+}
+
+function getBuiltinQuickCommandIconUriMap(
+    webview: vscode.Webview,
+    extensionUri: vscode.Uri
+): Record<string, string> {
+    const icons = new Map<string, string>()
+
+    for (const command of DEFAULT_QUICK_COMMANDS) {
+        if (!command.icon.startsWith('builtin:')) {
+            continue
+        }
+
+        icons.set(
+            command.icon,
+            webview.asWebviewUri(
+                vscode.Uri.joinPath(
+                    extensionUri,
+                    'media',
+                    getQuickCommandIconFileName(command.icon)
+                )
+            ).toString()
+        )
+    }
+
+    return Object.fromEntries(icons)
+}
+
+function getQuickCommandIconFileName(icon: string): string {
+    switch (icon) {
+        case 'builtin:codex':
+            return 'codex.svg'
+        case 'builtin:claude':
+            return 'claude.svg'
+        case 'builtin:gemini':
+            return 'gemini.svg'
+        default:
+            return 'icon.svg'
+    }
 }
 
 function getIconMarkup(icon: 'plus' | 'settings' | 'close'): string {

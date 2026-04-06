@@ -1,30 +1,61 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256" fill="none">
   <defs>
-    <linearGradient id="bg" x1="26" y1="18" x2="232" y2="238" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#0F172A"/>
-      <stop offset="1" stop-color="#111827"/>
+    <!-- 背景：深色极简风格 -->
+    <rect id="icon-rect" width="256" height="256" rx="60" />
+    <linearGradient id="bg-grad" x1="0" y1="0" x2="256" y2="256" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#111827"/>
+      <stop offset="100%" stop-color="#030712"/>
     </linearGradient>
-    <linearGradient id="panel" x1="142" y1="62" x2="196" y2="194" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#38BDF8"/>
-      <stop offset="1" stop-color="#2563EB"/>
+
+    <!-- 侧边栏垂直条渐变 -->
+    <linearGradient id="sidebar-line-grad" x1="0" y1="0" x2="0" y2="1" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#06B6D4" stop-opacity="0"/>
+      <stop offset="50%" stop-color="#06B6D4"/>
+      <stop offset="100%" stop-color="#06B6D4" stop-opacity="0"/>
     </linearGradient>
-    <linearGradient id="frame" x1="48" y1="52" x2="210" y2="206" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#334155" stop-opacity="0.9"/>
-      <stop offset="1" stop-color="#1E293B" stop-opacity="0.9"/>
-    </linearGradient>
+
+    <!-- 会话卡片滤镜 -->
+    <filter id="card-shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="black" flood-opacity="0.5"/>
+    </filter>
+    
+    <!-- 终端光晕 -->
+    <filter id="terminal-glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="6" result="blur"/>
+      <feComposite in="SourceGraphic" in2="blur" operator="over"/>
+    </filter>
   </defs>
-  <rect x="18" y="18" width="220" height="220" rx="44" fill="url(#bg)"/>
-  <rect x="18" y="18" width="220" height="220" rx="44" stroke="#1E293B" stroke-width="4"/>
-  <rect x="46" y="52" width="164" height="152" rx="24" fill="#0B1220" stroke="url(#frame)" stroke-width="4"/>
-  <rect x="46" y="52" width="164" height="24" rx="12" fill="#111827"/>
-  <circle cx="64" cy="64" r="4" fill="#475569"/>
-  <circle cx="78" cy="64" r="4" fill="#334155"/>
-  <circle cx="92" cy="64" r="4" fill="#334155"/>
-  <rect x="142" y="62" width="54" height="132" rx="16" fill="url(#panel)"/>
-  <rect x="64" y="88" width="44" height="10" rx="5" fill="#64748B" opacity="0.75"/>
-  <rect x="64" y="110" width="58" height="10" rx="5" fill="#475569" opacity="0.9"/>
-  <rect x="64" y="132" width="50" height="10" rx="5" fill="#475569" opacity="0.72"/>
-  <rect x="64" y="154" width="64" height="10" rx="5" fill="#334155" opacity="0.95"/>
-  <path d="M163 111L177 125L163 139" stroke="#F8FAFC" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
-  <path d="M181 151H163" stroke="#86EFAC" stroke-width="10" stroke-linecap="round"/>
+
+  <!-- 底座 -->
+  <use href="#icon-rect" fill="url(#bg-grad)"/>
+
+  <!-- 右侧边栏指示条 (Secondary Sidebar Metaphor) -->
+  <rect x="220" y="48" width="6" height="160" rx="3" fill="url(#sidebar-line-grad)" opacity="0.8"/>
+
+  <!-- Hub 会话堆叠 (The Hub Metaphor) -->
+  <!-- 底层卡片 -->
+  <rect x="55" y="75" width="130" height="90" rx="16" fill="#1E293B" opacity="0.4" transform="rotate(-3 120 120)"/>
+  <!-- 中层卡片 -->
+  <rect x="50" y="70" width="130" height="90" rx="16" fill="#1E293B" opacity="0.6" transform="rotate(-1.5 120 120)"/>
+  
+  <!-- 顶层活动会话卡片 -->
+  <g filter="url(#card-shadow)">
+    <rect x="45" y="65" width="145" height="105" rx="18" fill="#1E293B" stroke="#334155" stroke-width="2"/>
+    
+    <!-- 终端内容 (Prompt) -->
+    <g transform="translate(70, 100)" filter="url(#terminal-glow)">
+      <path d="M0 0L12 11L0 22" stroke="#22D3EE" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+      <rect x="22" y="16" width="18" height="6" rx="3" fill="#22D3EE">
+        <animate attributeName="opacity" values="1;0.2;1" dur="1.5s" repeatCount="indefinite" />
+      </rect>
+    </g>
+    
+    <!-- 卡片装饰：模拟 Tab 栏 -->
+    <rect x="60" y="78" width="20" height="4" rx="2" fill="#475569"/>
+    <rect x="85" y="78" width="20" height="4" rx="2" fill="#334155"/>
+    <rect x="110" y="78" width="20" height="4" rx="2" fill="#334155"/>
+  </g>
+
+  <!-- 装饰：微弱的连接线，强调 Hub 感 -->
+  <path d="M190 118H220" stroke="#06B6D4" stroke-width="2" stroke-dasharray="4 4" opacity="0.4"/>
 </svg>
