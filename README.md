@@ -1,60 +1,91 @@
 # Sidebar Terminal Hub
 
-一个把可交互命令行直接放进 VS Code 辅助侧边栏的扩展。
+Sidebar Terminal Hub is a VS Code extension that embeds an interactive terminal directly into the secondary sidebar.
 
-Repository: [Junyu06/sidebar-terminal-hub](https://github.com/Junyu06/sidebar-terminal-hub)
+Its core workflow is:
 
-终端不再需要单独占一个底部面板标签页，而是可以直接固定在侧边栏里，适合长期挂着命令行的工作流。
+**Open sidebar terminal → keep command sessions pinned on the side → run CLI tools without switching to the bottom panel**
 
-![Sidebar Terminal Hub screenshot](./media/readme_image_1.png)
+This project is focused on turning the sidebar into a practical terminal workspace, rather than adding unrelated terminal features by default.
 
-## 功能特性
+[中文说明](./README.zh.md)
 
-- 在辅助侧边栏中直接显示可交互终端
-- 支持多个终端会话标签
-- 支持直接键盘输入、粘贴、运行命令
-- 支持 ANSI / TUI 类终端输出
-- 支持状态栏 `Terminal` 按钮一键打开
-- 支持在视图标题栏中新建 / 关闭当前终端
-- 支持自定义快捷按钮，按你的工作流启动常用命令
+---
 
-## 使用方式
+## Problem It Solves
 
-- 点击状态栏中的 `Terminal`
-- 点击 `+` 新建多个终端标签
-- 点击 `×` 关闭当前终端标签
-- 在设置页里添加你自己的快捷命令按钮
+VS Code's built-in terminal is powerful, but it usually lives in the bottom panel.
 
-## 适用场景
+That layout is not ideal when you want to:
 
-- 把终端长期固定在右侧辅助栏
-- 同时保留多个 CLI 会话
-- 给仓库开发命令、测试命令或脚本做快捷入口
+- keep a terminal visible while editing
+- pin long-running CLI sessions to the side
+- treat the sidebar as a lightweight command hub
 
-## 开发
+Sidebar Terminal Hub reduces that friction by placing an interactive terminal where sidebar-oriented workflows already happen.
+
+---
+
+## Features
+
+- Interactive terminal embedded in the secondary sidebar
+- Multiple terminal sessions with tabs
+- Direct keyboard input, paste, and command execution
+- ANSI / TUI output support
+- Status bar button to open the sidebar terminal quickly
+- View title actions for creating and closing sessions
+- Custom quick-command buttons for your own workflow
+
+---
+
+## Typical Use Cases
+
+- Keep coding and terminal output visible at the same time
+- Pin Codex, test runners, build scripts, or dev servers in the sidebar
+- Maintain multiple CLI sessions without constantly toggling the bottom panel
+- Turn the secondary sidebar into a lightweight terminal hub
+
+---
+
+## Design Direction
+
+This repository is maintained as a focused fork.
+
+The goal is not to mirror every upstream terminal interaction tweak.  
+The goal is to keep a cleaner product direction around the idea of a **sidebar terminal hub**.
+
+---
+
+## Development
 
 ```bash
 npm install
 npm run compile
 ```
 
-然后在 VS Code 中按 `F5` 启动扩展开发宿主窗口。
+Then press `F5` in VS Code to launch the extension development host.
 
-## 打包
+---
+
+## Packaging
 
 ```bash
 npm.cmd run package:patch
 ```
 
-这个命令会自动：
+This command will:
 
-- 补丁版本号 `+1`
-- 编译扩展
-- 生成新的 `.vsix`
+- bump the patch version
+- compile the extension
+- generate a new `.vsix`
 
-## Notes
+---
 
-这个仓库当前作为独立维护版本使用，定位是一个更聚焦的 sidebar terminal hub。
+## Repository
+
+- GitHub: [Junyu06/sidebar-terminal-hub](https://github.com/Junyu06/sidebar-terminal-hub)
+
+---
 
 ## License
 
