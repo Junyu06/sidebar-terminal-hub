@@ -1,13 +1,17 @@
 {
-  "name": "right-sidebar-terminal",
-  "displayName": "Right Sidebar Terminal",
+  "name": "sidebar-terminal-hub",
+  "displayName": "Sidebar Terminal Hub",
   "description": "Embedded command-line terminal in the secondary sidebar",
-  "publisher": "JTOFJSJ",
+  "publisher": "teriri",
   "icon": "media/extension-icon.png",
   "version": "1.0.7",
   "repository": {
     "type": "git",
-    "url": "https://gitee.com/wagio_admin/vscode-right-sidebar-terminal"
+    "url": "https://github.com/Junyu06/sidebar-terminal-hub.git"
+  },
+  "homepage": "https://github.com/Junyu06/sidebar-terminal-hub#readme",
+  "bugs": {
+    "url": "https://github.com/Junyu06/sidebar-terminal-hub/issues"
   },
   "engines": {
     "vscode": "^1.105.0"

@@ -14,9 +14,9 @@ export const IMMEDIATE_FLUSH_SEQUENCE_PATTERN = /\u001b\[\?(?:47|1047|1048|1049)
 export const FONT_SIZE_MIN = 10
 export const FONT_SIZE_MAX = 32
 
-export const DEFAULT_QUICK_COMMANDS = [
-    { id: 'codex', label: 'Codex', command: 'codex', icon: 'builtin:codex' },
-    { id: 'claude', label: 'Claude', command: 'claude', icon: 'builtin:claude' },
-    { id: 'gemini', label: 'Gemini', command: 'gemini', icon: 'builtin:gemini' },
-    { id: 'opencode', label: 'OpenCode', command: 'opencode', icon: 'builtin:opencode' }
-] as const
+export const DEFAULT_QUICK_COMMANDS: ReadonlyArray<{
+    id: string
+    label: string
+    command: string
+    icon: string
+}> = []

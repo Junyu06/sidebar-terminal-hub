@@ -47,7 +47,7 @@ type NodePtyModule = {
 
 export class TerminalSidebarProvider implements vscode.WebviewViewProvider, vscode.Disposable {
     private readonly sessions = new Map<string, SidebarSession>()
-    private readonly outputChannel = vscode.window.createOutputChannel('Right Sidebar Terminal')
+    private readonly outputChannel = vscode.window.createOutputChannel('Sidebar Terminal Hub')
     private view?: vscode.WebviewView
     private isReady = false
     private activeSessionId?: string
@@ -370,7 +370,7 @@ export class TerminalSidebarProvider implements vscode.WebviewViewProvider, vsco
                 env: Object.assign({}, process.env, {
                     TERM: 'xterm-256color',
                     COLORTERM: 'truecolor',
-                    TERM_PROGRAM: 'right-sidebar-terminal'
+                    TERM_PROGRAM: 'sidebar-terminal-hub'
                 })
             })
         }
@@ -436,7 +436,7 @@ export class TerminalSidebarProvider implements vscode.WebviewViewProvider, vsco
         this.outputChannel.appendLine(`[error] ${message}`)
         this.outputChannel.appendLine(details)
         this.outputChannel.show(true)
-        void vscode.window.showErrorMessage(`${message} See "Right Sidebar Terminal" output for details.`)
+        void vscode.window.showErrorMessage(`${message} See "Sidebar Terminal Hub" output for details.`)
     }
 
     private ensureNodePtyHelperExecutable() {
@@ -704,12 +704,13 @@ export class TerminalSidebarProvider implements vscode.WebviewViewProvider, vsco
         }
 
         this.hasRestoredSessions = true
-        const storedSessions = this.context.globalState.get<StoredSidebarSession[]>(SESSIONS_KEY)
+        const storedState = this.getStoredSessionState()
+        const storedSessions = storedState.sessions
         if (!Array.isArray(storedSessions) || storedSessions.length === 0) {
             return
         }
 
-        const storedActiveSessionId = this.context.globalState.get<string>(ACTIVE_SESSION_KEY)
+        const storedActiveSessionId = storedState.activeSessionId
 
         for (const storedSession of storedSessions) {
             try {
@@ -750,8 +751,35 @@ export class TerminalSidebarProvider implements vscode.WebviewViewProvider, vsco
         }
 
         return Promise.all([
-            this.context.globalState.update(SESSIONS_KEY, storedState.sessions),
-            this.context.globalState.update(ACTIVE_SESSION_KEY, storedState.activeSessionId)
+            this.context.workspaceState.update(SESSIONS_KEY, storedState.sessions),
+            this.context.workspaceState.update(ACTIVE_SESSION_KEY, storedState.activeSessionId)
         ])
+    }
+
+    private getStoredSessionState(): StoredSidebarState {
+        const workspaceSessions = this.context.workspaceState.get<StoredSidebarSession[]>(SESSIONS_KEY)
+        const workspaceActiveSessionId = this.context.workspaceState.get<string>(ACTIVE_SESSION_KEY)
+
+        if (Array.isArray(workspaceSessions) && workspaceSessions.length > 0) {
+            return {
+                activeSessionId: workspaceActiveSessionId,
+                sessions: workspaceSessions
+            }
+        }
+
+        const legacyGlobalSessions = this.context.globalState.get<StoredSidebarSession[]>(SESSIONS_KEY)
+        const legacyGlobalActiveSessionId = this.context.globalState.get<string>(ACTIVE_SESSION_KEY)
+
+        if (Array.isArray(legacyGlobalSessions) && legacyGlobalSessions.length > 0) {
+            return {
+                activeSessionId: legacyGlobalActiveSessionId,
+                sessions: legacyGlobalSessions
+            }
+        }
+
+        return {
+            activeSessionId: workspaceActiveSessionId,
+            sessions: []
+        }
     }
 }

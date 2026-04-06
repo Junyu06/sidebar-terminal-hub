@@ -32,6 +32,7 @@ Thumbs.db
 
 # Workflow files
 .workflow/
+.worktrees/
 
 # Personal notes
 CLAUDE.md
