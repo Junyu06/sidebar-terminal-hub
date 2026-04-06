@@ -1,5 +1,8 @@
 # Sidebar Terminal Hub
 
+[![VS Code Marketplace](https://img.shields.io/visual-studio-marketplace/v/TerrysPlayground.sidebar-terminal-hub?label=VS%20Code%20Marketplace)](https://marketplace.visualstudio.com/items?itemName=TerrysPlayground.sidebar-terminal-hub)
+[![Installs](https://img.shields.io/visual-studio-marketplace/i/TerrysPlayground.sidebar-terminal-hub)](https://marketplace.visualstudio.com/items?itemName=TerrysPlayground.sidebar-terminal-hub)
+
 Sidebar Terminal Hub is a VS Code extension that embeds an interactive terminal directly into the secondary sidebar.
 
 Its core workflow is:
@@ -9,6 +12,17 @@ Its core workflow is:
 This project is focused on turning the sidebar into a practical terminal workspace, rather than adding unrelated terminal features by default.
 
 [中文说明](./README.zh.md)
+
+---
+
+## Install
+
+- VS Code Marketplace: [TerrysPlayground.sidebar-terminal-hub](https://marketplace.visualstudio.com/items?itemName=TerrysPlayground.sidebar-terminal-hub)
+- Command line:
+
+```bash
+code --install-extension TerrysPlayground.sidebar-terminal-hub
+```
 
 ---
 
